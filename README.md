@@ -11,7 +11,7 @@ This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your
 
 To the "<i>Data_description</i>" input form, enter a description of your sample. This field can be blank.
 
-<pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins></pre>
+<pre><b>Data_description:</b> <ins>Enter a description of your sample. </ins></pre>
 
 <b><ins>Temperature and Period Data</ins></b>
 
