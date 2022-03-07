@@ -13,8 +13,8 @@ For exampel, if you have the following dataset
   37.0        24.2
   42.0        20.8</pre>
 enter your data as follows:
-<pre><b>Temperatures:<b> <u>32.0, 37.0, 42.0         <u>
-<b>Periods:<b> <u>28.5, 24.2, 20.8              </u>
+<pre><b>Temperatures:</b> <u>32.0, 37.0, 42.0         <u>
+<b>Periods:</b> <u>28.5, 24.2, 20.8              </u>
 The values should be delimited by a single comma
 (leading and trailing spaces will be ignored).</pre>
 
