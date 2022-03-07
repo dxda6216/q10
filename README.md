@@ -13,7 +13,7 @@ To the "<i>Data_description</i>" input form, enter a description of your sample.
 
 <pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins></pre>
 
-<b><ins>Entry of Temperature and Period Data</ins></b>
+<b><ins>Temperature and Period Data</ins></b>
 
 Enter your data into the "<i>Temperatures</i>" and "<i>Periods</i>" input forms.
 For exampel, if you have the following dataset
