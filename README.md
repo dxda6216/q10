@@ -8,7 +8,7 @@ This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your
 Enter your data into the "<i>Temperatures</i>" and "<i>Periods</i>" input forms.
 For exampel, if you have the following dataset
 
-<pre><u>Temp (˚C)</u>   <u>Period (hr)</u>
+<pre>'''Temp (˚C)'''   <u>Period (hr)</u>
   32.0        28.5
   37.0        24.2
   42.0        20.8</pre>
