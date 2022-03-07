@@ -28,7 +28,7 @@ The values should be delimited by a single comma
 
 Scales of X-axis and Y-axis, ticks, etc. will automatically be adjusted.
 
-To adjust figure size, scale of axis, etc. manually, chenge the "<i>Set_graphical_parameters_of_firure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modified arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q10 calculation. The arguments (int or float values) are in the following order:
+To adjust figure size, scale of axis, etc. manually, chenge the "<i>Set_graphical_parameters_of_firure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modify arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q10 calculation. The arguments (int or float values) are in the following order:
 <pre><b>Figure_graphical_parameters:</b> <ins>8, 6, 27, 45, 28, 45, 2, 14, 45, 14, 45, 2, 28, 43     </ins>
 
  0th argument : Figure size - width
