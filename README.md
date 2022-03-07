@@ -35,7 +35,7 @@ The values should be delimited by a single comma. Leading and trailing spaces wi
 
 Scales of X-axis and Y-axis, ticks, etc will automatically be adjusted.
 
-<b>(Optional)</b> To manually adjust the figure size, axis scales & ticks, etc, chenge the "<i>Set_graphical_parameters_of_figure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modify arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q<sub>10</sub> calculation. The arguments (int or float values) are in the following order:
+<b>(Optional)</b> To manually adjust the figure size, axis scales & ticks, etc, change the "<i>Set_graphical_parameters_of_figure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modify arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q<sub>10</sub> calculation. The arguments (int or float values) are in the following order:
 <pre><b>Figure_graphical_parameters:</b> <ins>8, 6, 27, 45, 28, 45, 2, 14, 45, 14, 45, 2, 28, 43     </ins>
 
  0th argument : Figure size - width
