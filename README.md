@@ -7,7 +7,7 @@ This is a simple code to calculate Q10 values for circadian period length by usi
 
 This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or saved anywhere.
 
-To the "<i>Data_description<i>" input form, enter a description of your sample. This field can be blank.
+To the "<i>Data_description</i>" input form, enter a description of your sample. This field can be blank.
 
 <pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins></pre>
 
