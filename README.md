@@ -9,7 +9,7 @@ This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your
 
 To the "<i>Data_description<i>" input form, enter a description of your sample. This field can be blank.
 
-<pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins>
+<pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins></pre>
 
 Enter your data into the "<i>Temperatures</i>" and "<i>Periods</i>" input forms.
 For exampel, if you have the following dataset
