@@ -52,3 +52,6 @@ Scales of X-axis and Y-axis, ticks, etc will automatically be adjusted.
 11th argument : Y-axis ticks - interval
 12th argument : Fitted curve - starting
 13th argument : Fitted curve - ending</pre>
+
+If you have period data obtained only at 2 different temperatures, please see:
+https://github.com/dxda6216/q10_two_temperatures
