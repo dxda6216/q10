@@ -7,7 +7,7 @@ https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period
 
 ## Usage
 
-This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or saved.
+This calculator is for calculatig Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or saved.
 
 <b><ins>Sample Description</ins></b>
 
