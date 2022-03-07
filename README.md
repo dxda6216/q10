@@ -16,7 +16,7 @@ To the "<i>Data_description</i>" input form, enter a description of your sample.
 <b><ins>Temperature and Period Data</ins></b>
 
 Enter your data into the "<i>Temperatures</i>" and "<i>Periods</i>" input forms.
-For exampel, if you have the following dataset
+For example, if you have the following dataset
 
 <pre><ins>Temp (˚C)</ins>   <ins>Period (hr)</ins>
   32.0        28.5
