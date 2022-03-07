@@ -3,7 +3,7 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb
 
-![q10c_ss_80p](https://user-images.githubusercontent.com/101025597/157003902-737a4096-d741-494e-b4b9-74103bb56a45.png)
+![q10c_ss_80p](https://user-images.githubusercontent.com/101025597/157086163-5640d7b6-3d36-40fa-ae06-82019893911c.png)
 
 ## Usage
 
