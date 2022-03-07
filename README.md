@@ -7,6 +7,10 @@ This is a simple code to calculate Q10 values for circadian period length by usi
 
 This calculator is calculatig Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or saved anywhere.
 
+To the "<i>Data_description<i>" input form, enter a description of your sample. This field can be blank.
+
+<pre><b>Data_description:</b> <ins>Enter a description of your sample.         </ins>
+
 Enter your data into the "<i>Temperatures</i>" and "<i>Periods</i>" input forms.
 For exampel, if you have the following dataset
 
@@ -20,7 +24,11 @@ enter your data as follows:
 The values should be delimited by a single comma
 (leading and trailing spaces will be ignored).</pre>
 
-To adjust figure size, scale of axis, etc. of the data plot, chenge the "<i>Set_graphical_parameters_of_firure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modified arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q10 calculation. The arguments (int or float values) are in the following order:
+<b><ins>Data Plotting</ins></b>
+
+Scales of X-axis and Y-axis, ticks, etc. will automatically be adjusted.
+
+To adjust figure size, scale of axis, etc. manually, chenge the "<i>Set_graphical_parameters_of_firure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modified arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q10 calculation. The arguments (int or float values) are in the following order:
 <pre><b>Figure_graphical_parameters:</b> <ins>8, 6, 27, 45, 28, 45, 2, 14, 45, 14, 45, 2, 28, 43     </ins>
 
  0th argument : Figure size - width
