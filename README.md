@@ -1,6 +1,7 @@
 # Circadian period Q<sub>10</sub> calculator
-This is a simple code to calculate Q10 values for circadian period length by using SciPy Optimize non-linear least squares fit on Google Colab.
-![q10c_ss](https://user-images.githubusercontent.com/101025597/156993405-8feba83f-b749-4ac9-8d97-5f3f909d65ab.png)
+is is a simple code to calculate Q10 values for circadian period length by using SciPy Optimize non-linear least squares fit on Google Colab.
+
+Th![q10c_ss](https://user-images.githubusercontent.com/101025597/156994512-41cef5f8-f140-4cf1-a14d-7d67b32e812d.png)
 
 ## Usage
 
