@@ -22,11 +22,11 @@ For example, if you have the following dataset
   32.2        28.5
   35.3        27.1
   37.0        24.2
-  39.6        22.7
-  42.0        20.8</pre>
+  39.6        22.6
+  41.8        20.7</pre>
 enter your data as follows:
-<pre><b>Temperatures:</b> <ins>32.0, 35.3, 37.0, 39.6, 42.0     </ins>
-<b>Periods:</b> <ins>28.5, 27.1, 24.2, 22.7, 20.8          </ins></pre>
+<pre><b>Temperatures:</b> <ins>32.2, 35.3, 37.0, 39.6, 41.8     </ins>
+<b>Periods:</b> <ins>28.5, 27.1, 24.2, 22.6, 20.7          </ins></pre>
 The values should be delimited by a single comma. Leading and trailing spaces will be ignored.
 
 <b><ins>Data Plotting</ins></b>
