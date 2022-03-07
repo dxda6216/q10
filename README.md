@@ -24,9 +24,8 @@ For example, if you have the following dataset
   42.0        20.8</pre>
 enter your data as follows:
 <pre><b>Temperatures:</b> <ins>32.0, 37.0, 42.0         </ins>
-<b>Periods:</b> <ins>28.5, 24.2, 20.8              </ins>
-The values should be delimited by a single comma
-(leading and trailing spaces will be ignored).</pre>
+<b>Periods:</b> <ins>28.5, 24.2, 20.8              </ins></pre>
+The values should be delimited by a single comma. Leading and trailing spaces will be ignored.
 
 <b><ins>Data Plotting</ins></b>
 
