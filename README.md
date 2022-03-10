@@ -4,7 +4,7 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 **Open in Google Colab:**<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb
 
-![q10c_ss_80p](https://user-images.githubusercontent.com/101025597/157086163-5640d7b6-3d36-40fa-ae06-82019893911c.png)
+<img width="700" alt="q10ss" src="https://user-images.githubusercontent.com/101025597/157565673-5f3826cb-7808-4b62-8908-efda81ab1b93.png">
 
 ## Usage
 
@@ -58,5 +58,5 @@ Scales of X-axis and Y-axis, ticks, etc will automatically be adjusted.
 12th argument : Fitted curve - starting
 13th argument : Fitted curve - ending</pre>
 
-If you have period data obtained only at 2 different temperatures, please see:
+If you have period data obtained only at 2 different temperatures (only 2 data points), please see:
 https://github.com/dxda6216/q10_two_temperatures
