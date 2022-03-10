@@ -12,7 +12,7 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 
 This calculator fits an exponential equation:<br />
 ![q10eq_s2](https://user-images.githubusercontent.com/101025597/157140650-b4d4112d-d1ea-4ffb-98b8-dbb24e2e45a7.png) <br />
-to a set of data points.
+to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
 
 <b><ins>Sample Description</ins></b>
 
