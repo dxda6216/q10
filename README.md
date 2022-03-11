@@ -60,7 +60,7 @@ Scales of X-axis and Y-axis, ticks, etc will automatically be adjusted.
 
 <b><ins>Exporting Dataset and Fitted Curve</ins></b>
 
-To output the dataset and fitted curve in tab-delimited format, select "<b>Yes</b>" in the "<i>Display_tab_delimited_data</i>" dropdown, and 2-column datasets will be displayed. To export the data to Excel, copy the dataset and paste it onto an Excel worksheet (right click →  Paste Options: Paste Special... → Paste as Unicode Text → click "OK").
+To output the dataset and fitted curve in tab-delimited format, select "<b>Yes</b>" in the "<i>Display_tab_delimited_data</i>" dropdown, and 2-column datasets will be displayed. To export the data to Excel, copy the 2-column dataset and paste it onto an Excel worksheet (right click →  Paste Options: Paste Special... → Paste as Unicode Text → click "OK").
 
 If you have period data obtained only at 2 different temperatures (only 2 data points), please see:
 https://github.com/dxda6216/q10_two_temperatures
