@@ -15,12 +15,14 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 This calculator fits an exponential equation:
 
 Tau<sub>t</sub> = Tau<sub>37</sub> / ( Q<sub>10</sub> ** ( ( t - 37 ) * 0.1 ) )
+<img width="250" alt="q10eq37" src="https://user-images.githubusercontent.com/101025597/197672427-7adf4440-0436-4dd8-a96a-325b51b1f7ad.png>
 
 to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
 
 For cyanobacteria data, it fits an exponential equation:
 
 Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )
+<img width="250" alt="q10eq30" src="https://user-images.githubusercontent.com/101025597/197672313-48dbad35-6faf-4466-8e75-ed32a5971b86.png>
 
 to a set of data points, and estimates a period length at 30˚C and Q<sub>10</sub> value.
 
