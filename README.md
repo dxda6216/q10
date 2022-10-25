@@ -12,10 +12,16 @@ https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period
 
 This program is for calculating Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or stored in any location (please see the code).
 
-This calculator fits an exponential equation:<br />
-<br />
-Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )<br />
-<br />
+This calculator fits an exponential equation:
+
+Tau<sub>t</sub> = Tau<sub>37</sub> / ( Q<sub>10</sub> ** ( ( t - 37 ) * 0.1 ) )
+
+to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
+
+For cyanobacteria data:
+
+Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )
+
 to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
 
 <b><ins>Sample Description</ins></b>
