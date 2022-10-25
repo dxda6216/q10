@@ -8,8 +8,6 @@ https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period
 
 <img width="700" alt="q10ss" src="https://user-images.githubusercontent.com/101025597/157565673-5f3826cb-7808-4b62-8908-efda81ab1b93.png">
 
-## Usage
-
 This program is for calculating Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or stored in any location (please see the code).
 
 This calculator fits an exponential equation:
@@ -25,6 +23,8 @@ Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )<
 <img width="250" alt="q10eq30" src="https://user-images.githubusercontent.com/101025597/197672313-48dbad35-6faf-4466-8e75-ed32a5971b86.png">
 <br />
 to a set of data points, and estimates a period length at 30˚C and Q<sub>10</sub> value.
+
+## Usage
 
 <b><ins>Sample Description</ins></b>
 
