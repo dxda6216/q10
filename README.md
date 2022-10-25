@@ -18,11 +18,11 @@ Tau<sub>t</sub> = Tau<sub>37</sub> / ( Q<sub>10</sub> ** ( ( t - 37 ) * 0.1 ) )
 
 to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
 
-For cyanobacteria data:
+For cyanobacteria data, it fits an exponential equation:
 
 Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )
 
-to a set of data points, and estimates a period length at 37˚C and Q<sub>10</sub> value.
+to a set of data points, and estimates a period length at 30˚C and Q<sub>10</sub> value.
 
 <b><ins>Sample Description</ins></b>
 
