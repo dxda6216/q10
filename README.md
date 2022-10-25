@@ -3,7 +3,7 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 
 **Open in Google Colab:**<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
-*For cyanobacteria date use:*<br/>
+*For cyanobacteria data, please use:*<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
 
 <img width="700" alt="q10ss" src="https://user-images.githubusercontent.com/101025597/157565673-5f3826cb-7808-4b62-8908-efda81ab1b93.png">
