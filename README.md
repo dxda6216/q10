@@ -52,24 +52,6 @@ The values should be delimited by a single comma. Leading and trailing spaces wi
 
 Scales of X-axis and Y-axis, ticks, etc will automatically be adjusted.
 
-<b>(Optional)</b> To manually adjust the figure size, axis scales & ticks, etc, change the "<i>Set_graphical_parameters_of_figure</i>" dropdown field from "<b>No</b>" to "<b>Yes</b>", and modify arguments in the "<i>Figure_graphical_parameters</i>" input field. Those are for plotting only and don't affect the result of Q<sub>10</sub> calculation. The arguments (int or float values) are in the following order:
-<pre><b>Figure_graphical_parameters:</b> <ins>8, 6, 27, 45, 28, 45, 2, 14, 45, 14, 45, 2, 28, 43     </ins>
-
- 0th argument : Figure size - width
- 1st argument : Figure size - height
- 2nd argument : X-axis scale - min
- 3rd argument : X-axis scale - max
- 4th argument : X-axis ticks - starting
- 5th argument : X-axis ticks - ending
- 6th argument : X-axis ticks - interval
- 7th argument : Y-axis scale - min
- 8th argument : Y-axis scale - max
- 9th argument : Y-axis ticks - starting
-10th argument : Y-axis ticks - ending
-11th argument : Y-axis ticks - interval
-12th argument : Fitted curve - starting
-13th argument : Fitted curve - ending</pre>
-
 <b><ins>Exporting Dataset and Fitted Curve</ins></b>
 
 To output the dataset and fitted curve in tab-delimited format, select "<b>Yes</b>" in the "<i>Display_tab_delimited_data</i>" dropdown, and 2-column datasets will be displayed. To export the data to Excel, copy the 2-column dataset and paste it onto an Excel worksheet (right click →  Paste Options: Paste Special... → Paste as Unicode Text → click "OK").
