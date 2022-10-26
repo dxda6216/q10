@@ -1,12 +1,7 @@
 # Circadian period Q<sub>10</sub> calculator
 This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy Optimize non-linear least squares fit on Google Colab.
 
-**Open in Google Colab:**<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
-*For cyanobacteria data, please use:*<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
-
-<img width="700" alt="q10ss" src="https://user-images.githubusercontent.com/101025597/157565673-5f3826cb-7808-4b62-8908-efda81ab1b93.png">
+<img width="600" alt="q10ss" src="https://user-images.githubusercontent.com/101025597/157565673-5f3826cb-7808-4b62-8908-efda81ab1b93.png">
 
 This program is for calculating Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or stored in any location (please see the code).
 
@@ -25,6 +20,16 @@ Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )<
 to a set of data points, and estimates a period length at 30˚C (Tau<sub>30</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 ## Usage
+
+<b><ins>Open the calculator (Google Colab notebook)</ins></b>
+
+Click on the link below:<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
+
+*For cyanobacteria data, please use:*<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
+
+Note: To use the Colab, you will need to login to your Google account.
 
 <b><ins>Sample Description</ins></b>
 
