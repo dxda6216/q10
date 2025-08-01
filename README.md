@@ -29,6 +29,9 @@ https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period
 *For cyanobacteria data, please use:*<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
 
+*By using median temperature:*<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_(median_temperature).ipynb<br/>
+
 Note: To use the Colab, you will need to login to your Google account.
 
 <b><ins>Sample Description</ins></b>
