@@ -26,11 +26,11 @@ to a set of data points, and estimates a period length at 30˚C (Tau<sub>30</sub
 Click on the link below:<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
 
+*For mammalian cells data, please use:*<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_mammalian_cells.ipynb<br/>
+
 *For cyanobacteria data, please use:*<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
-
-*By using median temperature:*<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_(median_temperature).ipynb<br/>
 
 Note: To use the Colab, you will need to login to your Google account.
 
