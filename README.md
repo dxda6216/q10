@@ -28,6 +28,7 @@ to a set of data points, and estimates a period length at 30˚C (Tau<sub>30</sub
 <b><ins>Open the calculator (Google Colab notebook)</ins></b>
 
 Click on the link below:<br/>
+
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
 
 *For mammalian cells data, please use:*<br/>
