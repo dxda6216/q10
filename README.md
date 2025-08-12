@@ -15,12 +15,14 @@ to a set of data points, and estimates a period length at base temperature *bt* 
 For mammalian cells data, it fits an exponential equation:
 
 Tau<sub>*t*</sub> = Tau<sub>*37*</sub> / ( Q<sub>10</sub> ** ( ( *t* - 37 ) / 10 ) )<br />
+<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{37}}{{Q_{10}}^{^({\frac{t-37}{10}})}">
 <br />
 to a set of data points, and estimates a period length at 37˚C (Tau<sub>37</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For cyanobacteria data, it fits an exponential equation:
 
 Tau<sub>*t*</sub> = Tau<sub>*30*</sub> / ( Q<sub>10</sub> ** ( ( *t* - 30 ) / 10 ) )<br />
+<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{30}}{{Q_{10}}^{^({\frac{t-30}{10}})}">
 <br />
 to a set of data points, and estimates a period length at 30˚C (Tau<sub>*30*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
