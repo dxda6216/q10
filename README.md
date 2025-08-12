@@ -9,7 +9,7 @@ This calculator fits an exponential equation:
 
 Tau<sub>t</sub> = Tau<sub>bt</sub> / ( Q<sub>10</sub> ** ( ( t - bt ) / 10 ) )<br />
 
-to a set of data points, and estimates a period length at base temperature bt˚C (Tau<sub>bt</sub>) and temperature coefficient (Q<sub>10</sub>).
+to a set of data points, and estimates a period length at base temperature bt ˚C (Tau<sub>bt</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For mammalian cells data, it fits an exponential equation:
 
