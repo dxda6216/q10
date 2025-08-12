@@ -7,21 +7,19 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 
 This calculator fits an exponential equation:
 
-Tau<sub>t</sub> = Tau<sub>bt</sub> / ( Q<sub>10</sub> ** ( ( t - bt ) * 0.1 ) )<br />
+Tau<sub>t</sub> = Tau<sub>bt</sub> / ( Q<sub>10</sub> ** ( ( t - bt ) / 10 ) )<br />
 
 to a set of data points, and estimates a period length at base temperature bt˚C (Tau<sub>bt</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For mammalian cells data, it fits an exponential equation:
 
-Tau<sub>t</sub> = Tau<sub>37</sub> / ( Q<sub>10</sub> ** ( ( t - 37 ) * 0.1 ) )<br />
-<img width="250" alt="q10eq37" src="https://user-images.githubusercontent.com/101025597/197672427-7adf4440-0436-4dd8-a96a-325b51b1f7ad.png">
+Tau<sub>t</sub> = Tau<sub>37</sub> / ( Q<sub>10</sub> ** ( ( t - 37 ) / 10 ) )<br />
 <br />
 to a set of data points, and estimates a period length at 37˚C (Tau<sub>37</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For cyanobacteria data, it fits an exponential equation:
 
-Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) * 0.1 ) )<br />
-<img width="250" alt="q10eq30" src="https://user-images.githubusercontent.com/101025597/197672313-48dbad35-6faf-4466-8e75-ed32a5971b86.png">
+Tau<sub>t</sub> = Tau<sub>30</sub> / ( Q<sub>10</sub> ** ( ( t - 30 ) / 10 ) )<br />
 <br />
 to a set of data points, and estimates a period length at 30˚C (Tau<sub>30</sub>) and temperature coefficient (Q<sub>10</sub>).
 
