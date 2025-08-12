@@ -8,6 +8,7 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 This calculator fits an exponential equation:
 
 Tau<sub>t</sub> = Tau<sub>bt</sub> / ( Q<sub>10</sub> ** ( ( t - bt ) * 0.1 ) )<br />
+
 to a set of data points, and estimates a period length at base temperature bt˚C (Tau<sub>bt</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For mammalian cells data, it fits an exponential equation:
