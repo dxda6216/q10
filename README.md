@@ -7,24 +7,21 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 
 This calculator fits an exponential equation:
 
-Tau<sub>*t*</sub> = Tau<sub>*bt*</sub> / ( Q<sub>10</sub> ** ( ( *t* - *bt* ) / 10 ) )<br />
 <img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{bt}}{{Q_{10}}^{^({\frac{t-bt}{10}})}">
 
-to a set of data points, and estimates a period length at base temperature *bt* ˚C (Tau<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
+to a set of data points, and estimates a period length at base temperature *bt* ˚C (τ<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For mammalian cells data, it fits an exponential equation:
 
-Tau<sub>*t*</sub> = Tau<sub>*37*</sub> / ( Q<sub>10</sub> ** ( ( *t* - 37 ) / 10 ) )<br />
 <img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{37}}{{Q_{10}}^{^({\frac{t-37}{10}})}">
-<br />
-to a set of data points, and estimates a period length at 37˚C (Tau<sub>37</sub>) and temperature coefficient (Q<sub>10</sub>).
+
+to a set of data points, and estimates a period length at 37˚C (τ<sub>37</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 For cyanobacteria data, it fits an exponential equation:
 
-Tau<sub>*t*</sub> = Tau<sub>*30*</sub> / ( Q<sub>10</sub> ** ( ( *t* - 30 ) / 10 ) )<br />
 <img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{30}}{{Q_{10}}^{^({\frac{t-30}{10}})}">
-<br />
-to a set of data points, and estimates a period length at 30˚C (Tau<sub>*30*</sub>) and temperature coefficient (Q<sub>10</sub>).
+
+to a set of data points, and estimates a period length at 30˚C (τ<sub>30</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 ## Usage
 
