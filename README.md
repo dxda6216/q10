@@ -1,7 +1,7 @@
 # Circadian period Q<sub>10</sub> calculator
 This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy Optimize non-linear least squares fit on Google Colab.<br />
 
-<img width="836" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/q10cc.jpg"><br />
+<img width="836" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/q10cc.jpg?raw=true"><br />
 
 This program is for calculating Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or stored in any location (please see the code).
 
@@ -44,6 +44,7 @@ Note: To use the Colab, you will need to login to your Google account.
 To the "<i>Data_description</i>" input form, enter a description of your sample. This field can be blank.
 
 <pre><b>Data_description:</b> <ins>Enter a description of your sample. </ins></pre>
+<pre><img width="613" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/data_description_input.jpg?raw=true"></pre>
 
 <b><ins>Temperature and Period Data</ins></b>
 
@@ -60,8 +61,6 @@ enter your data as follows:
 
 
 <pre><img width="631" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/datainput.jpg?raw=true"></pre>
-<pre><b>Temperatures:</b> <ins>32.2, 35.3, 37.0, 39.6, 41.8     </ins>
-<b>Periods:</b> <ins>28.5, 27.1, 24.2, 22.6, 20.7          </ins></pre>
 The values should be delimited by a single comma. Leading and trailing spaces will be ignored.
 
 <b><ins>Data Plotting</ins></b>
