@@ -43,7 +43,6 @@ Note: To use the Colab, you will need to login to your Google account.
 
 To the "<i>Data_description</i>" input form, enter a description of your sample. This field can be blank.
 
-<pre><b>Data_description:</b> <ins>Enter a description of your sample. </ins></pre>
 <pre><img width="613" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/data_description_input.jpg?raw=true"></pre>
 
 <b><ins>Temperature and Period Data</ins></b>
