@@ -11,18 +11,6 @@ This calculator fits an exponential equation:
 
 to a set of data points, and estimates a period length at base temperature *bt* ˚C (τ<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
-For mammalian cells data, it fits an exponential equation:
-
-<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{37}}{{Q_{10}}^{^({\frac{t-37}{10}})}">
-
-to a set of data points, and estimates a period length at 37˚C (τ<sub>37</sub>) and temperature coefficient (Q<sub>10</sub>).
-
-For cyanobacteria data, it fits an exponential equation:
-
-<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{30}}{{Q_{10}}^{^({\frac{t-30}{10}})}">
-
-to a set of data points, and estimates a period length at 30˚C (τ<sub>30</sub>) and temperature coefficient (Q<sub>10</sub>).
-
 ## Usage
 
 <b><ins>Open the calculator (Google Colab notebook)</ins></b>
