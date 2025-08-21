@@ -7,7 +7,7 @@ This program is for calculating Q<sub>10</sub> values and plotting data only. Yo
 
 This calculator fits an exponential equation:
 
-<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\frac{\tau&space;_{bt}}{{Q_{10}}^{^({\frac{t-bt}{10}})}">
+<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\tau&space;_{bt}\times{Q_{10}}^{\left(\frac{bt-t}{10}\right)})">
 
 to a set of data points, and estimates a period length at base temperature *bt* ˚C (τ<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
