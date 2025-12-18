@@ -19,6 +19,12 @@ Click on the link below:<br/>
 
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
 
+For mammalian cells:<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_mammalian_cells.ipynb<br/>
+
+For cyanobacteria:<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
+
 Note: To use the Colab, you will need to login to your Google account.
 
 <b><ins>Sample Description</ins></b>
