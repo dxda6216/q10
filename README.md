@@ -3,8 +3,6 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 
 <img width="836" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/q10cc.jpg?raw=true"><br />
 
-This programme is intended solely for calculating Q<sub>10</sub> values and plotting data. Data entered into this calculator is neither recorded nor stored anywhere other than your Google account (please see the code).
-
 This calculator fits an exponential equation:
 
 <img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\tau&space;_{bt}\times{Q_{10}}^{\left(\frac{bt-t}{10}\right)}">
@@ -24,7 +22,7 @@ https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period
 For cyanobacteria:<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
 
-Note: To use the Colab, you will need to login to your Google account.
+Note: To use the Colab, you will need to login to your Google account. This programme is intended solely for calculating Q<sub>10</sub> values and plotting data. Data entered into this calculator is neither recorded nor stored anywhere other than your Google account (please see the code).
 
 <b><ins>Sample Description</ins></b>
 
