@@ -3,7 +3,7 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 
 <img width="836" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/q10cc.jpg?raw=true"><br />
 
-This program is for calculating Q<sub>10</sub> values and plotting data only. Your data entered to this calculator will not be recorded or stored in any location (please see the code).
+This programme is intended solely for calculating Q<sub>10</sub> values and plotting data. Data entered into this calculator is neither recorded nor stored anywhere other than your Google account (please see the code).
 
 This calculator fits an exponential equation:
 
