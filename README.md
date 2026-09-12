@@ -46,7 +46,7 @@ enter your data as follows:
 <pre><img width="631" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/datainput.jpg?raw=true"></pre>
 The values should be delimited by a single comma. Leading and trailing spaces will be ignored.
 
-<b><ins>Setting base temperature</ins></b>
+<b><ins>Setting Base Temperature</ins></b>
 
 The base temperature *bt* can be set to any value. It doesn’t affect the approximate solution for Q<sub>10</sub>.
 
