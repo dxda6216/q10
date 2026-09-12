@@ -48,7 +48,7 @@ The values should be delimited by a single comma. Leading and trailing spaces wi
 
 <b><ins>Setting base temperature</ins></b>
 
-The base temperature *bt* ˚C (τ<sub>*bt*</sub>) can be set to any value. It doesn’t affect an approximate solution for Q<sub>10</sub>.
+The base temperature *bt* can be set to any value. It doesn’t affect the approximate solution for Q<sub>10</sub>.
 
 <b><ins>Data Plotting</ins></b>
 
