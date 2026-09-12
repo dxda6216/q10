@@ -43,9 +43,12 @@ For example, if you have the following dataset
   41.8        20.7</pre>
 enter your data as follows:
 
-
 <pre><img width="631" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/datainput.jpg?raw=true"></pre>
 The values should be delimited by a single comma. Leading and trailing spaces will be ignored.
+
+<b><ins>Setting base temperature</ins></b>
+
+The base temperature *bt* ˚C (τ<sub>*bt*</sub>) can be set to any value. It doesn’t affect an approximate solution for Q<sub>10</sub>.
 
 <b><ins>Data Plotting</ins></b>
 
