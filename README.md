@@ -16,7 +16,7 @@ to a set of data points, and estimates a period length at base temperature *bt* 
 To use the Colab, you will need to login to your Google account. This program is intended solely for calculating Q<sub>10</sub> values and plotting data. Data entered into this calculator is neither recorded nor stored anywhere other than your Google account (please see the code).
 
 Click on the link below:<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
+https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_bt.ipynb<br/>
 
 For mammalian cells:<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_mammalian_cells.ipynb<br/>
