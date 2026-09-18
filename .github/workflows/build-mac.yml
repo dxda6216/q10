@@ -1,0 +1,28 @@
+# GitHub Actions workflow: builds Q10Calculator.app on a macOS runner.
+# Save as  .github/workflows/build-mac.yml  in your repository.
+# Then: GitHub -> Actions -> "Build macOS App" -> Run workflow, and download
+# "Q10Calculator-macos" from the finished run's Artifacts.
+# NOTE: macos-latest is Apple Silicon (arm64), so the app runs on M-series Macs only.
+# For an Intel build, use an Intel runner label (check GitHub's current runner list).
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --noconfirm --clean --windowed --name Q10Calculator q10_calculator.py
+      - run: ditto -c -k --keepParent dist/Q10Calculator.app Q10Calculator-mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Q10Calculator-macos
+          path: Q10Calculator-mac.zip
