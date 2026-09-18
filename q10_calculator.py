@@ -19,22 +19,10 @@ from tkinter import filedialog, messagebox, ttk
 
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import matplotlib
 from matplotlib.figure import Figure
 from scipy.optimize import curve_fit
 
 DEG = "\u00B0"
-
-# Fonts: DejaVu Sans first (Latin text and the degree sign), then any installed
-# Japanese-capable font. matplotlib uses the list per glyph as a fallback chain, so
-# Japanese titles display correctly without widening the spacing in "\u00B0C".
-from matplotlib import font_manager
-
-_installed_fonts = {f.name for f in font_manager.fontManager.ttflist}
-_jp_fonts = [n for n in ("Yu Gothic", "Meiryo", "MS Gothic", "Hiragino Sans",
-                         "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP",
-                         "IPAexGothic", "IPAGothic", "TakaoGothic") if n in _installed_fonts]
-matplotlib.rcParams["font.family"] = ["DejaVu Sans"] + _jp_fonts
 
 DATA_ROWS = 15          # visible lines in the data input box
 TITLE_SIZE = 18          # plot-title font size (single-plot tabs)
@@ -215,7 +203,7 @@ def analyze(temps, periods, use_range, low, high, base_sel, base_custom):
 def summary_line(r):
     tau, q10 = r["popt"]
     tau_e, q10_e = r["perr"]
-    return (f"Est. tau at {r['base_t']:.2f} {DEG}C = {tau:.3f} \u00B1 {tau_e:.3f} h\n"
+    return (f"Est. tau at {r['base_t']:.2f}{DEG}C = {tau:.3f} \u00B1 {tau_e:.3f} h\n"
             f"Q$_{{10}}$ = {q10:.3f} \u00B1 {q10_e:.3f}    R$^2$ = {r['r2']:.4f}")
 
 
@@ -293,11 +281,11 @@ DRAWERS = [("Period", draw_period), ("Frequency", draw_frequency), ("Arrhenius",
 
 
 def _estimate_lines(text, size_pt, width_in):
-    """Rough count of rendered lines for wrapped text (CJK characters count as full-width)."""
+    """Rough count of rendered lines for wrapped text."""
     usable = width_in * 72 * 0.95
     n = 0
     for line in text.split("\n"):
-        w = sum(1.0 if ord(c) > 0x2E7F else 0.55 for c in line) * size_pt
+        w = len(line) * 0.55 * size_pt
         n += max(1, math.ceil(w / usable))
     return n
 
