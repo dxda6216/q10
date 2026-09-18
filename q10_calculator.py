@@ -25,12 +25,18 @@ from scipy.optimize import curve_fit
 
 DEG = "\u00B0"
 
-# Prefer fonts that can show Japanese text in plot titles (falls back to DejaVu Sans).
-matplotlib.rcParams["font.sans-serif"] = [
-    "Yu Gothic", "Meiryo", "MS Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans CJK JP", "IPAexGothic", "IPAGothic", "TakaoGothic",
-] + list(matplotlib.rcParams["font.sans-serif"])
+# Fonts: DejaVu Sans first (Latin text and the degree sign), then any installed
+# Japanese-capable font. matplotlib uses the list per glyph as a fallback chain, so
+# Japanese titles display correctly without widening the spacing in "\u00B0C".
+from matplotlib import font_manager
 
+_installed_fonts = {f.name for f in font_manager.fontManager.ttflist}
+_jp_fonts = [n for n in ("Yu Gothic", "Meiryo", "MS Gothic", "Hiragino Sans",
+                         "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP",
+                         "IPAexGothic", "IPAGothic", "TakaoGothic") if n in _installed_fonts]
+matplotlib.rcParams["font.family"] = ["DejaVu Sans"] + _jp_fonts
+
+DATA_ROWS = 15          # visible lines in the data input box
 TITLE_SIZE = 18          # plot-title font size (single-plot tabs)
 TITLE_SIZE_COMBINED = 20  # plot-title font size (saved 3-plot figure)
 
@@ -353,8 +359,9 @@ class Q10App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Q10 calculator for circadian period")
-        self.geometry("1250x780")
-        self.minsize(1000, 640)
+        # Tall enough for the data box, but never taller than the screen.
+        self.geometry(f"1250x{min(820, self.winfo_screenheight() - 80)}")
+        self.minsize(1000, 560)
         self.result = None
 
         self.var_range = tk.BooleanVar(value=False)
@@ -376,28 +383,43 @@ class Q10App(tk.Tk):
         left = ttk.Frame(self, padding=8)
         left.pack(side=tk.LEFT, fill=tk.Y)
 
+        # Packing order matters: everything below the data box is packed to the BOTTOM
+        # first, so on a short screen only the data box shrinks (it scrolls) while the
+        # buttons stay visible.
         f = ttk.LabelFrame(left, text="Plot title", padding=6)
-        f.pack(fill=tk.X, pady=(0, 6))
+        f.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
         ttk.Entry(f, textvariable=self.var_title, width=44).pack(fill=tk.X)
 
-        f = ttk.LabelFrame(left, text="Data (one pair per line)", padding=6)
-        f.pack(fill=tk.X, pady=(0, 6))
-        ttk.Label(f, text=f"temperature({DEG}C)  period(h)  - separated by comma / space / tab").pack(anchor="w")
-        box = ttk.Frame(f)
-        box.pack(fill=tk.X, pady=(0, 4))
-        self.txt_data = tk.Text(box, width=44, height=14, wrap="none", undo=True)
-        sb = ttk.Scrollbar(box, orient="vertical", command=self.txt_data.yview)
-        self.txt_data.configure(yscrollcommand=sb.set)
-        sb.pack(side=tk.RIGHT, fill=tk.Y)
-        self.txt_data.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.status = tk.StringVar(value="Ready.")
+        ttk.Label(left, textvariable=self.status, foreground="#555", wraplength=330
+                  ).pack(side=tk.BOTTOM, anchor="w", pady=(8, 0))
+
+        row = ttk.Frame(left)
+        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(6, 0))
+        ttk.Button(row, text="Save figure...", command=self.save_figure).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        ttk.Button(row, text="Save results...", command=self.save_results).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
+
+        ttk.Button(left, text="Calculate  (Ctrl+Enter)", command=self.run
+                   ).pack(side=tk.BOTTOM, fill=tk.X, ipady=4)
+
+        ttk.Checkbutton(left, text="Also show tab-delimited data in Results",
+                        variable=self.var_tab).pack(side=tk.BOTTOM, anchor="w", pady=(0, 6))
+
+        f = ttk.LabelFrame(left, text="Base temperature", padding=6)
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
+        cb = ttk.Combobox(f, textvariable=self.var_base, values=BASE_CHOICES, state="readonly", width=34)
+        cb.pack(fill=tk.X)
+        cb.bind("<<ComboboxSelected>>", lambda e: self._toggle_states())
         row = ttk.Frame(f)
-        row.pack(fill=tk.X)
-        ttk.Button(row, text="Load CSV...", command=self.load_csv).pack(side=tk.LEFT)
-        ttk.Button(row, text="Load example", command=self.load_example).pack(side=tk.LEFT, padx=4)
-        ttk.Button(row, text="Clear", command=self.clear_data).pack(side=tk.LEFT)
+        row.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(row, text="Custom value").pack(side=tk.LEFT)
+        self.sp_custom = ttk.Spinbox(row, from_=-273.15, to=200, increment=0.1, width=8,
+                                     textvariable=self.var_custom)
+        self.sp_custom.pack(side=tk.LEFT, padx=4)
+        ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
 
         f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=6)
-        f.pack(fill=tk.X, pady=(0, 6))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(f, text="Use only data within a temperature range",
                         variable=self.var_range, command=self._toggle_states).pack(anchor="w")
         row = ttk.Frame(f)
@@ -410,30 +432,23 @@ class Q10App(tk.Tk):
         self.sp_high.pack(side=tk.LEFT, padx=4)
         ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
 
-        f = ttk.LabelFrame(left, text="Base temperature", padding=6)
-        f.pack(fill=tk.X, pady=(0, 6))
-        cb = ttk.Combobox(f, textvariable=self.var_base, values=BASE_CHOICES, state="readonly", width=34)
-        cb.pack(fill=tk.X)
-        cb.bind("<<ComboboxSelected>>", lambda e: self._toggle_states())
+        # Data box: fills the remaining space, 25 lines tall by default.
+        f = ttk.LabelFrame(left, text="Data (one pair per line)", padding=6)
+        f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 6))
+        ttk.Label(f, text=f"temperature({DEG}C)  period(h)  - separated by comma / space / tab"
+                  ).pack(side=tk.TOP, anchor="w")
         row = ttk.Frame(f)
-        row.pack(fill=tk.X, pady=(4, 0))
-        ttk.Label(row, text="Custom value").pack(side=tk.LEFT)
-        self.sp_custom = ttk.Spinbox(row, from_=-273.15, to=200, increment=0.1, width=8,
-                                     textvariable=self.var_custom)
-        self.sp_custom.pack(side=tk.LEFT, padx=4)
-        ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
-
-        ttk.Checkbutton(left, text="Also show tab-delimited data in Results",
-                        variable=self.var_tab).pack(anchor="w", pady=(0, 6))
-
-        ttk.Button(left, text="Calculate  (Ctrl+Enter)", command=self.run).pack(fill=tk.X, ipady=4)
-        row = ttk.Frame(left)
-        row.pack(fill=tk.X, pady=(6, 0))
-        ttk.Button(row, text="Save figure...", command=self.save_figure).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        ttk.Button(row, text="Save results...", command=self.save_results).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
-
-        self.status = tk.StringVar(value="Ready.")
-        ttk.Label(left, textvariable=self.status, foreground="#555", wraplength=330).pack(anchor="w", pady=(8, 0))
+        row.pack(side=tk.BOTTOM, fill=tk.X)
+        ttk.Button(row, text="Load CSV...", command=self.load_csv).pack(side=tk.LEFT)
+        ttk.Button(row, text="Load example", command=self.load_example).pack(side=tk.LEFT, padx=4)
+        ttk.Button(row, text="Clear", command=self.clear_data).pack(side=tk.LEFT)
+        box = ttk.Frame(f)
+        box.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 4))
+        self.txt_data = tk.Text(box, width=44, height=DATA_ROWS, wrap="none", undo=True)
+        sb = ttk.Scrollbar(box, orient="vertical", command=self.txt_data.yview)
+        self.txt_data.configure(yscrollcommand=sb.set)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.txt_data.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     def _build_output(self):
         right = ttk.Frame(self, padding=(0, 8, 8, 8))
