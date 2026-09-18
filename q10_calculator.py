@@ -498,10 +498,12 @@ class Q10App(tk.Tk):
 
     def load_example(self):
         self._set_text(self.txt_data, EXAMPLE_DATA)
+        self.var_title.set("Example")
 
     def clear_data(self):
-        """Clear the data box and also the Results text and all three plots."""
+        """Clear the data box, the plot title, the Results text and all three plots."""
         self._set_text(self.txt_data, "")
+        self.var_title.set("")
         self._set_text(self.txt_out, "")
         for fig, canvas in zip(self.figs, self.canvases):
             fig._q10_header = None  # stop the resize handler from redrawing the header
