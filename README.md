@@ -2,14 +2,14 @@
 This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy Optimize non-linear least squares fit.<br />
 
 ---
-## On local computer (Windows, macOS, Linux)
+## To calculate Q<sub>10</sub> on your local system (Windows, macOS, Linux)
 Please download [q10_calculator.py](https://github.com/dxda6216/q10/blob/main/q10_calculator.py) into your computer and execute it from the command line.
 <pre>
 Run:           python q10_calculator.py
 Requirements:  Python 3.9+, numpy, scipy, matplotlib (tkinter ships with Python)
 </pre>
 ___
-## On Google Colab
+## To calculate Q<sub>10</sub> on Google Colab
 
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb
 
