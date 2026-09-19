@@ -8,6 +8,8 @@ Please download [q10_calculator.py](https://github.com/dxda6216/q10/blob/main/q1
 Run:           python q10_calculator.py
 Requirements:  Python 3.9+, numpy, scipy, matplotlib (tkinter ships with Python)
 </pre>
+
+<img width="836" alt="q10cgui" src="https://github.com/dxda6216/q10/blob/main/images/q10cgui.jpg?raw=true"><br />
 ___
 ## To calculate Q<sub>10</sub> on Google Colab
 
