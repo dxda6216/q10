@@ -1,5 +1,9 @@
 # Circadian period Q<sub>10</sub> calculator
-This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy Optimize non-linear least squares fit.<br />
+This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy optimize non-linear least squares fit. It fits an exponential equation:
+
+<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\tau&space;_{bt}\times{Q_{10}}^{\left(\frac{bt-t}{10}\right)}">
+
+to a set of data points, and estimates a period length at base temperature *bt* ˚C (τ<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 ---
 ## To calculate Q<sub>10</sub> on your local system (Windows, macOS, Linux)
@@ -16,12 +20,6 @@ ___
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb
 
 <img width="836" alt="q10cc" src="https://github.com/dxda6216/q10/blob/main/images/q10cc.jpg?raw=true"><br />
-
-This calculator fits an exponential equation:
-
-<img src="https://latex.codecogs.com/svg.image?\tau&space;_{t}=\tau&space;_{bt}\times{Q_{10}}^{\left(\frac{bt-t}{10}\right)}">
-
-to a set of data points, and estimates a period length at base temperature *bt* ˚C (τ<sub>*bt*</sub>) and temperature coefficient (Q<sub>10</sub>).
 
 ### Usage
 
