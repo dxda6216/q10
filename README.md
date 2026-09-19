@@ -3,7 +3,7 @@ This is a simple code to calculate Q<sub>10</sub> values for circadian period le
 
 ---
 ## On your computer
-Please download [q10_calculator.py](https://github.com/dxda6216/q10/blob/main/q10_calculator.py) into your computer and execute the script from the command line.
+Please download [q10_calculator.py](https://github.com/dxda6216/q10/blob/main/q10_calculator.py) into your computer and execute it from the command line.
 <pre>
 Run:           python q10_calculator.py
 Requirements:  Python 3.9+, numpy, scipy, matplotlib (tkinter ships with Python)
@@ -29,12 +29,6 @@ To use the Colab, you will need to login to your Google account. This program is
 
 Click on the link below:<br/>
 https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb<br/>
-
-For mammalian cells:<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_mammalian_cells.ipynb<br/>
-
-For cyanobacteria:<br/>
-https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10_for_cyano.ipynb<br/>
 
 <b><ins>Sample Description</ins></b>
 
