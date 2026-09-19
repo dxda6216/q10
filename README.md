@@ -2,7 +2,7 @@
 This is a simple code to calculate Q<sub>10</sub> values for circadian period length by using SciPy Optimize non-linear least squares fit.<br />
 
 ---
-## On your computer
+## On local computer (Windows, macOS, Linux)
 Please download [q10_calculator.py](https://github.com/dxda6216/q10/blob/main/q10_calculator.py) into your computer and execute it from the command line.
 <pre>
 Run:           python q10_calculator.py
