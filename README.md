@@ -47,6 +47,8 @@ The same calculator comes in three versions. They use the same model, the same f
 
 ## Quick start
 
+**▶ Open the web app: https://dxda6216.github.io/q10/index.html**
+
 The easiest way is to use the web application (browser version) available at [`https://dxda6216.github.io/q10/index.html`](https://dxda6216.github.io/q10/index.html). Although this app is hosted on GitHub Pages, the Q<sub>10</sub> calculations are performed within your web browser (on your computer), and neither the data you enter nor the analysis results are ever sent or stored anywhere.
 
 ### Browser version ### 
