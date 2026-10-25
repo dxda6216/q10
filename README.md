@@ -27,7 +27,7 @@ The same calculator comes in three versions. They use the same model, the same f
 ## Contents
 
 - [Quick start](#quick-start)
-- [Theory](#theory)
+- [Background](#background)
 - [How the fit is calculated](#how-the-fit-is-calculated)
 - [Inputs](#inputs)
 - [Outputs](#outputs)
