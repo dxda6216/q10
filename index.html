@@ -103,7 +103,10 @@
        period in column 2.
     4) Optionally tick the temperature-range box and set the range used for
        the fit. Points outside the range are drawn in light green and are not
-       used in the calculation.
+       used in the calculation. After a calculation, the range can also be
+       chosen by dragging across any plot (see attachRangeDrag); the range is
+       filled in and the fit recalculated on release. Double-click a plot or
+       click "Use all data" to return to all data.
     5) Choose the base temperature. Minimum / Maximum / Average / Median are
        computed from the data used in the fit.
     6) Click "Calculate" (or press Ctrl+Enter / Cmd+Enter).
@@ -243,7 +246,13 @@ kbd{font:11px var(--mono);opacity:.75;margin-left:4px}
 @media (max-width:620px){.view{padding:10px}}
 .figtitle{text-align:center;font-weight:600;font-size:1.15rem;margin:0}
 .figsum{white-space:pre-wrap;text-align:center;color:var(--muted);font-size:.86rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
-.plot svg{width:100%;height:auto;display:block}
+.plot svg{width:100%;height:auto;display:block;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+/* Drag-to-select range on the plots */
+.plot svg .hit{cursor:crosshair}
+.plot-hint{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin-top:6px;font-size:.82rem;color:var(--muted)}
+.plot-hint .live{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.plot-hint button{padding:4px 10px;font-size:.82rem}
+.plot-hint button:disabled{opacity:.45;cursor:not-allowed}
 .empty{display:grid;place-items:center;min-height:380px;color:var(--muted);text-align:center;font-size:.92rem}
 .empty p{max-width:34ch;margin:0}
 pre.report{font:12.5px/1.55 var(--mono);margin:0;overflow:auto;max-height:70vh;white-space:pre}
@@ -426,7 +435,7 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
     <ol>
       <li>The page opens with a demo calculation of example data. Click <strong>Clear</strong> to start with your own.</li>
       <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
-      <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included).</li>
+      <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included). Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
       <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
       <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
       <li>Switch between the Period, Frequency, Arrhenius and Report tabs.</li>
@@ -650,7 +659,16 @@ function analyze(x, y, useRange, low, high, baseSel, custom) {
   const fcx = Array.from({ length: 200 }, (_, i) => lo + (hi - lo) * i / 199);
   const fcy = fcx.map(T => model(T, fit.popt[0], fit.popt[1], base));
   const arr = arrheniusFit(xa, ya);
-  return { x, y, xa, ya, useRange, base, ...fit, fcx, fcy, arr };
+  // Reference curves fitted to ALL data. The plots take their axis limits from these
+  // (plus all data points), so restricting the fit range never changes the axis scales.
+  let ref = { fcy, arr };
+  if (useRange) {
+    try {
+      const all = fitQ10(x, y, base);
+      ref = { fcy: fcx.map(T => model(T, all.popt[0], all.popt[1], base)), arr: arrheniusFit(x, y) };
+    } catch (_) { /* keep the fitted-range curves as reference */ }
+  }
+  return { x, y, xa, ya, useRange, low, high, base, ...fit, fcx, fcy, arr, ref };
 }
 
 /* ---------------------------------------------------------------------
@@ -776,7 +794,8 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
      standalone : if true, wrap the output in an <svg> element
    Steps:
      1) map data points and fitted curve to (x, y), dropping non-finite values
-     2) axis limits = range covering both, plus 5 % padding (like matplotlib)
+     2) axis limits = range covering all data points and the all-data reference
+        curves (r.ref), plus 5 % padding (like matplotlib); fixed when a range is set
      3) build data -> screen transforms sx, sy (y is flipped)
      4) draw ticks, grid, frame, axis labels -> out-of-range points (green)
         -> points used in the fit -> dashed fitted curve
@@ -791,7 +810,12 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
   const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
   const arrOn = showArr && kind === "arrhenius";
   const arrLine = arrOn ? r.fcx.map(t => [P.tx(t), r.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
-  const all = [...pts, ...fit, ...arrLine];
+  // Axis limits come from all data points and the ALL-DATA reference curves (r.ref), so the
+  // scales stay the same when a fit range is chosen. Curves of a range fit that run past
+  // these limits are clipped to the plot area.
+  const refFit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.ref.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+  const refArr = arrOn ? r.fcx.map(t => [P.tx(t), r.ref.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
+  const all = [...pts, ...refFit, ...refArr];
   let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0]));
   let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
   const px = (x1 - x0 || 1) * 0.05, py = (y1 - y0 || 1) * 0.05; x0 -= px; x1 += px; y0 -= py; y1 += py;
@@ -806,10 +830,20 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
   s += `<rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}" fill="none" stroke="${c.axis}"/>`;
   s += `<text x="${ox + m.l + pw / 2}" y="${oy + H - 12}" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.xl)}</text>`;
   s += `<text transform="translate(${ox + 18} ${oy + m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.yl)}</text>`;
+  // On screen only: shade the current fit range, and add the elements used for
+  // drag-to-select (an invisible hit area and a hidden selection band).
+  const onScreen = c === SCREEN;
+  if (onScreen && r.useRange) {
+    const a = sx(P.tx(r.low)), b = sx(P.tx(r.high));
+    const L = Math.max(ox + m.l, Math.min(a, b)), R = Math.min(ox + m.l + pw, Math.max(a, b));
+    if (R > L) s += `<rect x="${L}" y="${oy + m.t}" width="${R - L}" height="${ph}" fill="${c.fit}" fill-opacity=".07"/>`;
+  }
   if (r.useRange) pts.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${c.excl}"/>`);
   used.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="${c.used}"/>`);
-  if (arrOn) s += `<polyline fill="none" stroke="${c.arr}" stroke-width="1.5" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
-  s += `<polyline fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  const clipId = `clip-${kind}-${Math.round(oy)}-${onScreen ? "s" : "p"}`;
+  s += `<clipPath id="${clipId}"><rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}"/></clipPath>`;
+  if (arrOn) s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.arr}" stroke-width="1.5" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   // legend in the emptiest corner
   // Legend: for each of the four corners, count the points that would fall inside
   // the legend box, and use the corner with the fewest (a simple version of
@@ -830,6 +864,11 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
                        : `<line x1="${ox + lx + 6}" x2="${ox + lx + 30}" y1="${Y - 4}" y2="${Y - 4}" stroke="${col}" stroke-width="2" stroke-dasharray="7 5"/>`;
     s += `<text x="${ox + lx + 38}" y="${Y}" font-size="12" fill="${c.ink}">${esc(label)}</text>`;
   });
+  if (onScreen) {
+    s += `<rect class="sel" x="0" y="${oy + m.t}" width="0" height="${ph}" fill="${c.fit}" fill-opacity=".18" stroke="${c.fit}" stroke-opacity=".6" visibility="hidden"/>`;
+    s += `<rect class="hit" x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}" fill="transparent"`
+       + ` data-x0="${x0}" data-x1="${x1}" data-kind="${kind}"/>`;
+  }
   if (standalone) s += "</svg>";
   return s;
 }
@@ -886,8 +925,83 @@ function render() {
   }
   if (current === "report") { els.view.innerHTML = `<pre class="report"></pre>`; els.view.firstChild.textContent = reportText(result, els.tab.checked); return; }
   const t = els.title.value.trim(), [l1, l2] = summaryLines(result);
-  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked)}</div>`;
+  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked)}</div>`
+    + `<div class="plot-hint"><span class="hint-text">Drag across the plot to fit only that temperature range. Double-click to use all data.</span>`
+    + `<button type="button" class="use-all"${result.useRange ? "" : " disabled"}>Use all data</button></div>`;
   if (t) els.view.querySelector(".figtitle").textContent = t;
+  els.view.querySelector(".use-all").addEventListener("click", useAllData);
+  attachRangeDrag(els.view.querySelector(".plot svg"));
+}
+
+/* ---------------- Drag-to-select temperature range on the plots ----------------
+   Dragging horizontally across the plot area selects a temperature range. While
+   dragging, a band shows the selection and the hint shows its temperatures; on
+   release the range is written into Low/High, the range checkbox is ticked and the
+   calculation runs again. The x-axis value is converted back to temperature (for
+   the Arrhenius plot T = 1000/x - 273.15). Low is rounded down and High up to
+   0.1 °C so that points at the edges of the band are included. If the new range
+   cannot be used (fewer than 3 points), the previous settings and result are kept
+   and the error is shown. Double-click (or "Use all data") switches the range off.
+   Pointer events are used, so mouse, pen and touch all work; touch-action: pan-y
+   keeps vertical page scrolling on touch screens. */
+const MIN_DRAG_PX = 4;  // shorter drags (in SVG units) count as clicks and are ignored
+function attachRangeDrag(svg) {
+  if (!svg) return;
+  const hit = svg.querySelector(".hit"), sel = svg.querySelector(".sel");
+  if (!hit || !sel) return;
+  const left = +hit.getAttribute("x"), width = +hit.getAttribute("width");
+  const x0 = +hit.dataset.x0, x1 = +hit.dataset.x1, kind = hit.dataset.kind;
+  const live = () => els.view.querySelector(".hint-text");
+  const hintDefault = live().textContent;
+  // client (screen) x -> SVG x, clamped to the plot area
+  const toSvgX = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return Math.max(left, Math.min(left + width, p.x));
+  };
+  // SVG x -> axis value -> temperature in °C
+  const toTemp = X => {
+    const v = x0 + (X - left) / width * (x1 - x0);
+    return kind === "arrhenius" ? 1000 / v - 273.15 : v;
+  };
+  let start = null;
+  const show = (a, b) => {
+    sel.setAttribute("x", Math.min(a, b)); sel.setAttribute("width", Math.abs(b - a));
+    sel.setAttribute("visibility", "visible");
+    const t1 = toTemp(a), t2 = toTemp(b);
+    live().innerHTML = `Selected: <span class="live">${Math.min(t1, t2).toFixed(1)}–${Math.max(t1, t2).toFixed(1)} ${DEG}C</span> — release to recalculate`;
+  };
+  hit.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    start = toSvgX(e); hit.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  hit.addEventListener("pointermove", e => { if (start !== null) show(start, toSvgX(e)); });
+  const finish = (e, cancelled) => {
+    if (start === null) return;
+    const end = toSvgX(e), a = start; start = null;
+    sel.setAttribute("visibility", "hidden"); live().textContent = hintDefault;
+    if (cancelled || Math.abs(end - a) < MIN_DRAG_PX) return;
+    const t1 = toTemp(a), t2 = toTemp(end);
+    applyRange(Math.floor(Math.min(t1, t2) * 10 + 1e-6) / 10, Math.ceil(Math.max(t1, t2) * 10 - 1e-6) / 10);  // 1e-6: ignore floating-point noise
+  };
+  hit.addEventListener("pointerup", e => finish(e, false));
+  hit.addEventListener("pointercancel", e => finish(e, true));
+  hit.addEventListener("dblclick", useAllData);
+}
+
+// Set the fit range to [lo, hi] and recalculate; restore the previous settings if it fails.
+function applyRange(lo, hi) {
+  const prev = { on: els.useRange.checked, low: els.low.value, high: els.high.value };
+  els.useRange.checked = true; els.low.value = lo.toFixed(1); els.high.value = hi.toFixed(1); toggleStates();
+  if (!run()) {
+    els.useRange.checked = prev.on; els.low.value = prev.low; els.high.value = prev.high; toggleStates();
+  }
+}
+
+// Switch the fit range off and recalculate with all data.
+function useAllData() {
+  if (!els.useRange.checked) return;
+  els.useRange.checked = false; toggleStates(); run();
 }
 
 // Plot size for the available width. On narrow screens a smaller coordinate system
@@ -909,16 +1023,19 @@ function updateReadout() {
 
 // "Calculate": read the inputs -> analyze() -> update the display on success.
 // On failure, "result" is left unchanged and only an error message is shown.
+// Returns true on success (used by drag-to-select to undo a failed range).
 function run() {
   try {
     const [t, p] = parsePairs(els.data.value);
     const useRange = els.useRange.checked;
     result = analyze(t, p, useRange, parseFloat(els.low.value), parseFloat(els.high.value), els.base.value, parseFloat(els.custom.value));
-  } catch (e) { setStatus("Cannot calculate: " + e.message, true); return; }
+  } catch (e) { setStatus("Cannot calculate: " + e.message, true); return false; }
   const [tau, q10] = result.popt;
-  setStatus(`Q10 = ${f3(q10)}, τ = ${f3(tau)} h at ${result.base.toFixed(2)}${DEG}C, R² = ${result.r2.toFixed(4)}`);
+  setStatus(`Q10 = ${f3(q10)}, τ = ${f3(tau)} h at ${result.base.toFixed(2)}${DEG}C, R² = ${result.r2.toFixed(4)}`
+            + (result.useRange ? ` (fit range ${result.low}–${result.high} ${DEG}C, ${result.xa.length} points)` : ""));
   if (current === "report") current = "period";
   updateReadout(); render();
+  return true;
 }
 
 // Hide the start-up notice (demo + privacy statement); called by Clear, editing the data, or loading a CSV.

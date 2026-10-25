@@ -102,7 +102,10 @@
        period in column 2.
     4) Optionally tick the temperature-range box and set the range used for
        the fit. Points outside the range are drawn in light green and are not
-       used in the calculation.
+       used in the calculation. After a calculation, the range can also be
+       chosen by dragging across any plot; the fit is recalculated on release.
+       Double-click a plot or click "Use all data" to return to all data.
+       The axis scales of the plots always match the all-data fit.
     5) Choose the base temperature. Minimum / Maximum / Average / Median are
        computed from the data used in the fit.
     6) Click "Calculate" (or press Ctrl+Enter).
@@ -149,6 +152,7 @@ from tkinter import filedialog, messagebox, ttk
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+from matplotlib.widgets import SpanSelector
 from scipy.optimize import curve_fit
 
 # ======================================================================
@@ -381,10 +385,20 @@ def analyze(temps, periods, use_range, low, high, base_sel, base_custom):
     fcx = np.linspace(int(x.min() - margin), int(x.max() + margin) + 1, 200)
     fcy = model(fcx, *popt)
 
+    arr = arrhenius_fit(xa, ya)
+    # Reference curves fitted to ALL data. The plots take their axis limits from these
+    # (plus all data points), so restricting the fit range never changes the axis scales.
+    ref = dict(fcy=fcy, arr=arr)
+    if use_range:
+        try:
+            popt_all, _, _, model_all = fit_q10(x, y, base_t)
+            ref = dict(fcy=model_all(fcx, *popt_all), arr=arrhenius_fit(x, y))
+        except (ValueError, RuntimeError):
+            pass  # keep the fitted-range curves as reference
+
     return dict(
-        x=x, y=y, xa=xa, ya=ya, use_range=use_range, base_t=base_t,
-        popt=popt, perr=perr, r2=r2, fcx=fcx, fcy=fcy,
-        arr=arrhenius_fit(xa, ya),
+        x=x, y=y, xa=xa, ya=ya, use_range=use_range, low=low, high=high, base_t=base_t,
+        popt=popt, perr=perr, r2=r2, fcx=fcx, fcy=fcy, arr=arr, ref=ref,
     )
 
 
@@ -476,6 +490,25 @@ def _scatter(ax, r, xs_all, ys_all, xs_used, ys_used):
                    label="Data points used for Q$_{10}$ calculation")
 
 
+def _fix_limits(ax, pairs):
+    """Set the axis limits to cover all (x, y) pairs plus a 5 % margin (matplotlib's
+    default autoscale margin). The drawers pass all data points and the ALL-DATA
+    reference curves, so the scales stay the same when a fit range is chosen;
+    range-fit curves that run past these limits are clipped by the axes."""
+    xs, ys = [], []
+    for px, py in pairs:
+        px, py = np.ravel(px).astype(float), np.ravel(py).astype(float)
+        ok = np.isfinite(px) & np.isfinite(py)
+        xs.append(px[ok]); ys.append(py[ok])
+    xs, ys = np.concatenate(xs), np.concatenate(ys)
+    if not len(xs):
+        return
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+    dx, dy = (x1 - x0) or 1.0, (y1 - y0) or 1.0
+    ax.set_xlim(x0 - 0.05 * dx, x1 + 0.05 * dx)
+    ax.set_ylim(y0 - 0.05 * dy, y1 + 0.05 * dy)
+
+
 def _fit_label(r):
     return f"Fit   Q$_{{10}}$ = {r['popt'][1]:5.3f}"
 
@@ -483,6 +516,7 @@ def _fit_label(r):
 def draw_period(ax, r, show_arr=False):
     _scatter(ax, r, r["x"], r["y"], r["xa"], r["ya"])
     ax.plot(r["fcx"], r["fcy"], "--", color="blue", label=_fit_label(r))
+    _fix_limits(ax, [(r["x"], r["y"]), (r["fcx"], r["ref"]["fcy"])])
     ax.set_xlabel(f"Temperature ({DEG}C)")
     ax.set_ylabel("Period (hours)")
     ax.set_title("Temperature vs. Period")
@@ -492,6 +526,7 @@ def draw_period(ax, r, show_arr=False):
 def draw_frequency(ax, r, show_arr=False):
     _scatter(ax, r, r["x"], 24 / r["y"], r["xa"], 24 / r["ya"])
     ax.plot(r["fcx"], 24 / r["fcy"], "--", color="blue", label=_fit_label(r))
+    _fix_limits(ax, [(r["x"], 24 / r["y"]), (r["fcx"], 24 / r["ref"]["fcy"])])
     ax.set_xlabel(f"Temperature ({DEG}C)")
     ax.set_ylabel(r"Frequency (day$^{-1}$)")
     ax.set_title("Temperature vs. Frequency")
@@ -508,6 +543,10 @@ def draw_arrhenius(ax, r, show_arr=False):
     if show_arr:
         ax.plot(inv(r["fcx"]), arrhenius_lnf(r["arr"], r["fcx"]), "-", color="dimgray", lw=1.5,
                 label=f"Arrhenius regression   E$_a$ = {r['arr']['Ea'] / 1000:.2f} kJ/mol")
+    pairs = [(inv(r["x"]), ln_f(r["y"])), (inv(r["fcx"]), ln_f(r["ref"]["fcy"]))]
+    if show_arr:
+        pairs.append((inv(r["fcx"]), arrhenius_lnf(r["ref"]["arr"], r["fcx"])))
+    _fix_limits(ax, pairs)
     ax.set_xlabel(r"1000/Temperature (K$^{-1}$)")
     ax.set_ylabel(r"ln(Frequency) (ln(day$^{-1}$))")
     ax.set_title("Arrhenius Plot: 1000/T vs. ln(Frequency)")
@@ -515,6 +554,12 @@ def draw_arrhenius(ax, r, show_arr=False):
 
 
 DRAWERS = [("Period", draw_period), ("Frequency", draw_frequency), ("Arrhenius", draw_arrhenius)]
+
+# x-axis value <-> temperature (°C) for each plot; used for the range band and drag-to-select.
+TO_X = {"Period": lambda t: t, "Frequency": lambda t: t,
+        "Arrhenius": lambda t: 1000.0 / (t + 273.15)}
+FROM_X = {"Period": lambda v: v, "Frequency": lambda v: v,
+          "Arrhenius": lambda v: 1000.0 / v - 273.15}
 
 
 def _estimate_lines(text, size_pt, width_in):
@@ -558,13 +603,29 @@ def apply_header(fig):
     fig.tight_layout(rect=[0, 0, 1, max(0.3, 1 - y_in / h)])
 
 
-def render_single(fig, drawer, r, title, show_arr=False):
-    """Draw one plot (for a tab) with the title and fit summary."""
+def render_single(fig, drawer, r, title, show_arr=False, name=None):
+    """Draw one plot (for a tab) with the title and fit summary; return its Axes.
+
+    With name (the plot's DRAWERS name) and a fit range set, the range is shaded
+    (on screen only; the saved figure has no band)."""
     fig.clear()
     ax = fig.add_subplot(111)
     drawer(ax, r, show_arr)
+    if name and r["use_range"]:
+        ax.axvspan(TO_X[name](r["low"]), TO_X[name](r["high"]), color="blue", alpha=0.07, lw=0, zorder=0)
     fig._q10_header = (title, summary_line(r), TITLE_SIZE, 9)
     apply_header(fig)
+    return ax
+
+
+def make_span_selector(ax, onselect, onmove):
+    """Horizontal SpanSelector, compatible with matplotlib 3.3-3.4 (rectprops) and 3.5+ (props)."""
+    kw = dict(useblit=True, onmove_callback=onmove)
+    style = dict(facecolor="tab:blue", alpha=0.2)
+    try:
+        return SpanSelector(ax, onselect, "horizontal", props=style, **kw)
+    except TypeError:
+        return SpanSelector(ax, onselect, "horizontal", rectprops=style, **kw)
 
 
 def render_combined(fig, r, title, show_arr=False):
@@ -671,7 +732,11 @@ HELP_CONTENT = [
          "or semicolons. Or use ", ("b", "Load CSV..."), " with temperature in column 1 and period in "
          "column 2. A header line and lines starting with # are skipped."],
         ["To fit only part of the data, tick ", ("b", "Use only data within a temperature range"),
-         " and set Low and High (both ends included)."],
+         " and set Low and High (both ends included). Or, after calculating, simply drag across "
+         "any plot: the range you select is filled in and the fit is recalculated at once. The "
+         "current range is shaded on the plots, and the axis scales stay the same as with all "
+         "data. Double-click a plot or click ", ("b", "Use all data"), " to go back to all data. "
+         "While the toolbar’s zoom or pan mode is on, dragging zooms or pans instead."],
         ["Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data "
          "used in the fit."],
         ["Click ", ("b", "Calculate"), ", or press Ctrl+Enter."],
@@ -817,6 +882,7 @@ class Q10App(tk.Tk):
         self.minsize(1000, 560)
         self.result = None
         self.help_win = None
+        self.selectors = []  # one SpanSelector per plot tab (references keep them alive)
 
         self.var_range = tk.BooleanVar(value=False)
         self.var_low = tk.StringVar(value="25")
@@ -902,6 +968,10 @@ class Q10App(tk.Tk):
         self.sp_high = ttk.Spinbox(row, from_=-50, to=150, increment=0.1, width=8, textvariable=self.var_high)
         self.sp_high.pack(side=tk.LEFT, padx=4)
         ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
+        ttk.Button(row, text="Use all data", command=self.use_all_data).pack(side=tk.RIGHT)
+        ttk.Label(f, text="Tip: after calculating, drag across a plot to choose the range; "
+                          "double-click a plot to use all data.",
+                  foreground="#555", wraplength=320, justify="left").pack(anchor="w", pady=(4, 0))
 
         # Data box: fills the remaining space.
         f = ttk.LabelFrame(left, text="Data (one pair per line)", padding=6)
@@ -974,6 +1044,7 @@ class Q10App(tk.Tk):
             fig = Figure(figsize=(6, 4.5), dpi=100)
             canvas = FigureCanvasTkAgg(fig, master=tab)
             canvas.mpl_connect("resize_event", lambda ev, f=fig: self._relayout(f))
+            canvas.mpl_connect("button_press_event", self._on_plot_press)
             NavigationToolbar2Tk(canvas, tab).update()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
             self.figs.append(fig)
@@ -1027,6 +1098,7 @@ class Q10App(tk.Tk):
             fig._q10_header = None  # stop the resize handler from redrawing the header
             fig.clear()
             canvas.draw()
+        self.selectors = []
         self.result = None
         self.status.set("Cleared.")
 
@@ -1067,8 +1139,11 @@ class Q10App(tk.Tk):
         self.status.set(f"Loaded {len(temps)} rows from {path.split('/')[-1]}")
 
     # ---- actions -----------------------------------------------------
-    def run(self):
-        """Calculate: read inputs -> analyze() -> redraw plots and Results."""
+    def run(self, select_tab=True):
+        """Calculate: read inputs -> analyze() -> redraw plots and Results.
+
+        Returns True on success. select_tab=False keeps the current tab (used when the
+        range is chosen by dragging on a plot)."""
         try:
             temps, periods = parse_pairs(self.txt_data.get("1.0", tk.END))
             use_range = self.var_range.get()
@@ -1079,27 +1154,94 @@ class Q10App(tk.Tk):
         except (ValueError, RuntimeError) as exc:
             messagebox.showerror("Cannot calculate", str(exc))
             self.status.set("Error: " + str(exc))
-            return
+            return False
 
         self.result = result
-        title = self.var_title.get().strip()
-        for fig, canvas, (_, drawer) in zip(self.figs, self.canvases, DRAWERS):
-            render_single(fig, drawer, result, title, self.var_arr.get())
-            canvas.draw()
+        self.selectors = [None] * len(DRAWERS)
+        for i in range(len(DRAWERS)):
+            self._render_plot(i)
         self._set_text(self.txt_out, report_text(result, self.var_tab.get()))
         tau, q10 = result["popt"]
-        self.status.set(f"Q10 = {q10:.3f}, tau = {tau:.3f} h at {result['base_t']:.2f}{DEG}C, "
-                        f"R\u00B2 = {result['r2']:.4f}")
-        self.nb.select(1)
+        msg = (f"Q10 = {q10:.3f}, tau = {tau:.3f} h at {result['base_t']:.2f}{DEG}C, "
+               f"R\u00B2 = {result['r2']:.4f}")
+        if result["use_range"]:
+            msg += f"  (fit range {result['low']:g}–{result['high']:g} {DEG}C, {len(result['xa'])} points)"
+        self.status.set(msg)
+        if select_tab:
+            self.nb.select(1)
+        return True
+
+    def _render_plot(self, i):
+        """Draw plot tab i (with the range band) and attach a fresh drag selector."""
+        name, drawer = DRAWERS[i]
+        ax = render_single(self.figs[i], drawer, self.result, self.var_title.get().strip(),
+                           self.var_arr.get(), name=name)
+        self.canvases[i].draw()
+        self.selectors[i] = make_span_selector(
+            ax, lambda a, b, n=name, ax=ax: self._on_span(n, ax, a, b),
+            lambda a, b, n=name: self._on_span_move(n, a, b))
 
     def _redraw_arrhenius(self):
         """Redraw only the Arrhenius tab after the regression-line checkbox changes."""
         if self.result is None:
             return
-        i = [name for name, _ in DRAWERS].index("Arrhenius")
-        render_single(self.figs[i], DRAWERS[i][1], self.result,
-                      self.var_title.get().strip(), self.var_arr.get())
-        self.canvases[i].draw()
+        self._render_plot([name for name, _ in DRAWERS].index("Arrhenius"))
+
+    # ---- drag-to-select temperature range ---------------------------
+    # Dragging horizontally across a plot selects a temperature range (matplotlib
+    # SpanSelector). While dragging, the status line shows the range; on release it is
+    # written into Low/High, the range checkbox is ticked and the calculation runs again
+    # (the current tab is kept). The x value is converted back to temperature (for the
+    # Arrhenius plot T = 1000/x - 273.15); Low is rounded down and High up to 0.1 °C so
+    # that points at the edges are included. If the new range cannot be used, the
+    # previous settings and result are kept. A double-click switches the range off.
+    # While the toolbar's zoom or pan mode is active, dragging zooms/pans instead.
+    MIN_DRAG_PX = 4  # shorter drags count as clicks and are ignored
+
+    @staticmethod
+    def _span_temps(name, a, b):
+        t1, t2 = FROM_X[name](a), FROM_X[name](b)
+        return min(t1, t2), max(t1, t2)
+
+    def _on_span_move(self, name, a, b):
+        lo, hi = self._span_temps(name, a, b)
+        self.status.set(f"Selected: {lo:.1f}–{hi:.1f} {DEG}C - release to recalculate")
+
+    def _on_span(self, name, ax, a, b):
+        px = ax.transData.transform([(a, 0), (b, 0)])[:, 0]
+        if abs(px[1] - px[0]) < self.MIN_DRAG_PX:
+            return
+        lo, hi = self._span_temps(name, a, b)
+        lo = math.floor(lo * 10 + 1e-6) / 10
+        hi = math.ceil(hi * 10 - 1e-6) / 10
+        # Defer: redrawing the figure inside the selector's own callback is unsafe.
+        self.after_idle(lambda: self._apply_range(lo, hi))
+
+    def _apply_range(self, lo, hi):
+        """Set the fit range to [lo, hi] and recalculate; restore the previous settings if it fails."""
+        prev = (self.var_range.get(), self.var_low.get(), self.var_high.get())
+        self.var_range.set(True)
+        self.var_low.set(f"{lo:.1f}")
+        self.var_high.set(f"{hi:.1f}")
+        self._toggle_states()
+        if not self.run(select_tab=False):
+            self.var_range.set(prev[0])
+            self.var_low.set(prev[1])
+            self.var_high.set(prev[2])
+            self._toggle_states()
+
+    def _on_plot_press(self, event):
+        """Double-click inside a plot -> use all data (ignored while zoom/pan is active)."""
+        if event.dblclick and event.inaxes is not None and not event.canvas.widgetlock.locked():
+            self.after_idle(self.use_all_data)
+
+    def use_all_data(self):
+        """Switch the fit range off and recalculate with all data."""
+        if not self.var_range.get() or self.result is None:
+            return
+        self.var_range.set(False)
+        self._toggle_states()
+        self.run(select_tab=False)
 
     def _need_result(self):
         if self.result is None:
