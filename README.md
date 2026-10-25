@@ -66,7 +66,7 @@ Go to: [`github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://
 
 ---
 
-## Principle
+## Background
 
 ### What Q<sub>10</sub> means
 
