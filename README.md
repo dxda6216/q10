@@ -47,9 +47,11 @@ The same calculator comes in three versions. They use the same model, the same f
 
 ## Quick start
 
+The easiest way is to use the web application (browser version) available at [`https://dxda6216.github.io/q10/index.html`](https://dxda6216.github.io/q10/index.html). Although this app is hosted on GitHub Pages, the Q<sub>10</sub> calculations are performed within your web browser (on your computer), and neither the data you enter nor the analysis results are ever sent or stored anywhere.
+
 ### Browser version ### 
 
-Open [`index.html`](https://github.com/dxda6216/q10/blob/main/index.html), click **Download raw file**, and open the saved file in your browser (alternatively, please go to the web app page: [`dxda6216.github.io/q10/index.html`](https://dxda6216.github.io/q10/index.html) hosted by GitHub Pages). It opens with a demo calculation. Click **Clear**, enter your data, then click **Calculate**.
+Open [`index.html`](https://github.com/dxda6216/q10/blob/main/index.html), click **Download raw file**, and open the saved file in your browser (alternatively, please go to the web app page: [`https://dxda6216.github.io/q10/index.html`](https://dxda6216.github.io/q10/index.html) hosted by GitHub Pages). It opens with a demo calculation. Click **Clear**, enter your data, then click **Calculate**.
 
 ### Python version ###
 
@@ -68,7 +70,7 @@ python q10_calculator.py
 
 ### Colab version ###
 
-Go to: [`github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb) and open the notebook [`circadian_period_q10.ipynb`](https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb) in Google Colab. Replace **Temperatures** and **Periods** in the form with your values, then choose **Runtime → Run all** (Ctrl+F9).
+Go to: [`https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb) and open the notebook [`circadian_period_q10.ipynb`](https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb) in Google Colab. Replace **Temperatures** and **Periods** in the form with your values, then choose **Runtime → Run all** (Ctrl+F9).
 
 ---
 
@@ -285,7 +287,7 @@ When the input can’t be used, no results are produced and a message explains w
 
 ### Browser version (`index.html`)
 
-**Getting it.** Open [`github.com/dxda6216/q10/blob/main/index.html`](https://github.com/dxda6216/q10/blob/main/index.html) and click **Download raw file**. Then open the saved file in any modern browser. No installation or server is needed.
+**Getting it.** Open [`https://github.com/dxda6216/q10/blob/main/index.html`](https://github.com/dxda6216/q10/blob/main/index.html) and click **Download raw file**. Then open the saved file in any modern browser. No installation or server is needed.
 
 **Using it.**
 
@@ -352,11 +354,11 @@ The window opens with the demo calculation and a notice above the results; **Cle
 
 ### Colab version (`circadian_period_q10.ipynb`)
 
-**Getting it.** Open [`github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb) and click **Download raw file**.
+**Getting it.** Open [`https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://github.com/dxda6216/q10/blob/main/circadian_period_q10.ipynb) and click **Download raw file**.
 
 **Opening it.** In Google Colab, choose **File → Upload notebook**, and select the saved notebook file (`circadian_period_q10.ipynb`). A Google account is required.
 
-Alternatively, open [`colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb)
+Alternatively, open [`https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb`](https://colab.research.google.com/github/dxda6216/q10/blob/main/circadian_period_q10.ipynb)
 
 **Using it.**
 
