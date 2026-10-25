@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<!--
+================================================================================
+  Q10 calculator for circadian period - standalone HTML version
+================================================================================
+  Download: https://github.com/dxda6216/q10/blob/main/index.html
+
+  A port of the Python/Tkinter program (q10_calculator.py) to a single HTML file
+  that runs entirely in the browser. No server or installation is needed: open
+  the file in a browser and it works. Without an internet connection the page
+  simply falls back to system fonts; all calculations run offline.
+
+  ==============================================================================
+  1. Theory
+  ==============================================================================
+  [Q10 (temperature coefficient)]
+    The factor by which a rate R changes for a 10 °C rise in temperature.
+    From rates R1, R2 measured at temperatures T1, T2:
+        Q10 = (R2 / R1) ^ (10 / (T2 - T1))
+    Typical enzyme-catalysed reactions have Q10 of about 2 to 3.
+
+  [Application to circadian rhythms]
+    The "rate" of a circadian clock is taken to be its frequency, f = 1/period.
+    Circadian clocks are temperature-compensated: their period depends only
+    weakly on temperature, so Q10 is typically close to 1 (roughly 0.8 to 1.2).
+      Q10 > 1 : period shortens as temperature rises (the clock runs faster)
+      Q10 = 1 : perfect temperature compensation
+      Q10 < 1 : period lengthens as temperature rises (overcompensation)
+
+  [Model that is fitted]
+    With tau_b the period at the base temperature T_b:
+        tau(T) = tau_b * Q10 ^ ((T_b - T) / 10)                         ... (1)
+    Frequency in cycles per day (day^-1):
+        f(T) = 24 / tau(T)
+    Taking logarithms:
+        ln f(T) = ln(24 / tau_b) + ((T - T_b) / 10) * ln Q10            ... (2)
+    So ln f is a straight line in T with slope ln(Q10) / 10.
+
+  [Meaning of the base temperature T_b]
+    T_b is only a reparameterisation: it decides at which temperature the
+    fitted period tau_b is reported. Q10, its standard error, R^2 and the
+    fitted curve itself are identical for every choice of T_b; only tau_b and
+    its error change. Choosing T_b far outside the data (e.g. absolute zero,
+    -273.15 °C) makes tau_b a large extrapolation with a large error.
+
+  [Arrhenius plot]
+    The Arrhenius equation k = A * exp(-Ea / (R * T_K)) gives a straight line
+    when ln k is plotted against 1/T_K (T_K = absolute temperature), with
+    slope -Ea/R (Ea: activation energy, R = 8.314 J mol^-1 K^-1).
+    This app plots ln f against 1000/T_K (K^-1). Model (2) is linear in T, not
+    in 1/T, so the fitted curve is slightly bent on the Arrhenius plot.
+    The two descriptions are approximately related by
+        Ea ~= R * T1 * T2 * ln(Q10) / 10     (T1, T2 in kelvin)
+
+  [Arrhenius regression line]
+    Optionally (checkbox, on by default) the Arrhenius plot also shows the
+    ordinary least-squares straight line of ln f against 1000/T_K, fitted to
+    the same data used for Q10:
+        ln f = intercept + slope * (1000 / T_K),    Ea = -slope * 1000 * R
+    It is drawn over the same temperature span as the Q10 curve, and its Ea,
+    slope, intercept, standard errors and R^2 appear in the report. Because
+    the two models differ in form (linear in T vs. linear in 1/T) and in the
+    quantity whose residuals are minimised (period vs. ln f), the two lines
+    are close but not identical; they diverge slightly outside the data range.
+
+  ==============================================================================
+  2. Calculation method
+  ==============================================================================
+    (a) Non-linear least squares minimising the sum of squared residuals of
+        the period itself (not its logarithm):
+            SSE = sum_i (tau_i - tau_hat(T_i))^2
+        This is the same objective as scipy.optimize.curve_fit with default
+        settings, so the same solution is obtained.
+    (b) Starting values: linear regression of ln(tau) on T, converted to
+        tau_b and Q10 through relation (2).
+    (c) Optimisation: Levenberg-Marquardt, iterating on a = ln(tau_b) and
+        b = ln(Q10) (keeps both parameters positive and converges reliably).
+    (d) Standard errors: covariance matrix Cov = s^2 * (J^T J)^-1 with
+        s^2 = SSE / (n - 2), where J is the Jacobian with respect to tau_b and
+        Q10. The "±" values are the square roots of its diagonal. This is the
+        definition curve_fit uses with absolute_sigma=False.
+    (e) Coefficient of determination: R^2 = 1 - SSE / SST,
+        SST = sum_i (tau_i - mean(tau))^2
+    (f) Fitted curve: the full temperature range of the data, extended on each
+        side by 33.3 % of its width (end points truncated to integers), drawn
+        with 200 points - the same as the Python version.
+    (g) Arrhenius regression: x_i = 1000 / (T_i + 273.15), y_i = ln(24 / tau_i),
+        simple linear regression y = intercept + slope * x on the fitted data.
+            slope = Sxy / Sxx,  intercept = mean(y) - slope * mean(x)
+            s^2 = SSE / (n - 2),  SE(slope) = sqrt(s^2 / Sxx),
+            SE(intercept) = sqrt(s^2 * (1/n + mean(x)^2 / Sxx))
+            Ea = -slope * 1000 * R  (J/mol),  SE(Ea) = SE(slope) * 1000 * R
+        with R = 8.314462618 J mol^-1 K^-1.
+
+  ==============================================================================
+  3. How to use
+  ==============================================================================
+    1) On opening, the page shows a demo calculation with the example data.
+    2) Click "Clear" to empty the form.
+    3) Enter one "temperature(°C) period(h)" pair per line in the data box
+       (separate the values with commas, spaces, tabs or semicolons),
+       or use "Load CSV..." to read a file with temperature in column 1 and
+       period in column 2.
+    4) Optionally tick the temperature-range box and set the range used for
+       the fit. Points outside the range are drawn in light green and are not
+       used in the calculation.
+    5) Choose the base temperature. Minimum / Maximum / Average / Median are
+       computed from the data used in the fit.
+    6) Click "Calculate" (or press Ctrl+Enter / Cmd+Enter).
+    7) Switch between the Period / Frequency / Arrhenius / Report tabs.
+    8) "Save figure" saves the three plots stacked in one image (PNG or SVG);
+       "Save report" saves the results text.
+
+  ==============================================================================
+  4. Privacy, network access and offline use
+  ==============================================================================
+    - All calculations run locally in the browser (plain JavaScript in this file).
+    - No data is sent anywhere: the script makes no network requests (no fetch,
+      XMLHttpRequest, beacons, WebSockets, forms or tracking).
+    - Nothing is stored: no cookies, localStorage, sessionStorage or IndexedDB.
+      Form fields carry autocomplete="off" so the browser does not restore or
+      remember their contents; at start-up the demo data is always loaded.
+      Files are written only when the user clicks a Save button (browser download).
+    - The only external resource is Google Fonts: the stylesheet from
+      fonts.googleapis.com and font files from fonts.gstatic.com (see <head>).
+      These requests carry no user data, but expose the IP address and user agent
+      to Google, as any web request does.
+    - Offline, the fonts fail to load and the page uses system fonts; everything
+      else, including saving, works unchanged.
+    - Download: the HTML file is available from
+          https://github.com/dxda6216/q10/blob/main/index.html
+      ("Download raw file" on that page). The start-up notice and the help
+      dialog link there; the link opens only when the user clicks it.
+
+  ==============================================================================
+  5. File layout
+  ==============================================================================
+    <style>   : page design (colours are CSS variables for light/dark mode)
+    <body>    : HTML for the input panel (left), output area (right) and the
+                "How it works" help dialog
+    <script>  : four blocks
+        - Calculation core : data parsing and fitting (no dependence on the page)
+        - Report text      : builds the results text
+        - Plotting (SVG)   : draws the plots as SVG strings
+        - UI               : buttons, display updates, file saving, help dialog
+    No external libraries are used: the plots and the least-squares fit are
+    plain JavaScript.
+================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Q10 calculator for circadian period</title>
+<!-- Web fonts from Google Fonts: the ONLY external resources this page loads.
+     Without a connection they are skipped and system fonts are used. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------
+   Design tokens (colours and fonts) as CSS variables.
+   Dark mode overrides the values in the @media block and in
+   [data-theme="dark"] below.
+   --used / --excluded / --fit are the plot colours for points used in
+   the fit, points outside the fit range, and the fitted curve.
+   The safe-area padding keeps content clear of phone notches and
+   system bars.
+   --------------------------------------------------------------- */
+:root{
+  color-scheme: light;
+  --bg:#EEF1F5; --panel:#FFFFFF; --ink:#18233A; --muted:#5B6578; --line:#D5DBE5;
+  --field:#F7F9FB; --accent:#2F4FB5; --accent-ink:#FFFFFF;
+  --used:#C2410C; --excluded:#8DBB90; --fit:#2F4FB5; --arr:#4B5563; --grid:#E3E8EF; --axis:#6B7486;
+  --err-bg:#FDECEA; --err:#9F1D12;
+  --sans:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#121826; --panel:#1B2333; --ink:#E6EAF2; --muted:#9AA4B8; --line:#2E384C;
+    --field:#151C2A; --accent:#7D95F0; --accent-ink:#0E1424;
+    --used:#F08A4B; --excluded:#5E8C63; --fit:#8EA3F5; --arr:#C3CAD7; --grid:#263043; --axis:#8A94A8;
+    --err-bg:#3A1C1A; --err:#FFB4AB;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121826; --panel:#1B2333; --ink:#E6EAF2; --muted:#9AA4B8; --line:#2E384C;
+  --field:#151C2A; --accent:#7D95F0; --accent-ink:#0E1424;
+  --used:#F08A4B; --excluded:#5E8C63; --fit:#8EA3F5; --arr:#C3CAD7; --grid:#263043; --axis:#8A94A8;
+  --err-bg:#3A1C1A; --err:#FFB4AB;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+/* Overall layout: input panel on the left, output on the right; stacked below 880px. */
+.app{display:grid;grid-template-columns:minmax(300px,360px) 1fr;gap:20px;max-width:1400px;margin:0 auto;padding:20px}
+@media (max-width:880px){.app{grid-template-columns:1fr;padding:12px;gap:12px}}
+h1{font-size:1.35rem;line-height:1.2;margin:0 0 2px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 16px;font-size:.88rem}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+fieldset{border:0;border-top:1px solid var(--line);margin:14px 0 0;padding:12px 0 0}
+fieldset:first-of-type{border-top:0;margin-top:0;padding-top:0}
+legend{font-weight:600;font-size:.92rem;padding:0;margin-bottom:6px}
+label{font-size:.88rem}
+.hint{color:var(--muted);font-size:.8rem;margin:0 0 6px}
+input[type=text],input[type=number],select,textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--field);
+  border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+input[type=number]{width:6.5em}
+textarea{font:13px/1.55 var(--mono);resize:vertical;min-height:180px;height:300px;white-space:pre;overflow:auto}
+input:disabled,select:disabled{opacity:.45}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row + .row{margin-top:8px}
+.check{display:flex;gap:8px;align-items:center}
+button{font:inherit;font-size:.88rem;border-radius:6px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--axis)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;width:100%;padding:10px;font-size:.95rem}
+button.primary:hover{filter:brightness(1.08)}
+.grow{flex:1}
+kbd{font:11px var(--mono);opacity:.75;margin-left:4px}
+.status{margin-top:10px;font-size:.84rem;color:var(--muted);min-height:1.3em}
+.status.error{background:var(--err-bg);color:var(--err);padding:8px 10px;border-radius:6px}
+
+/* Output area: result numbers (readout), tabs, plot/report view. */
+.out{display:flex;flex-direction:column;gap:14px;min-width:0}
+.readout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.readout div{padding:12px 16px;border-left:1px solid var(--line)}
+.readout div:first-child{border-left:0}
+.readout dt{font-size:.8rem;color:var(--muted)}
+.readout dd{margin:0;font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.readout dd small{font-size:.8rem;font-weight:400;color:var(--muted);margin-left:4px}
+@media (max-width:620px){.readout{grid-template-columns:1fr 1fr}.readout div:nth-child(3){border-left:0}.readout div:nth-child(n+3){border-top:1px solid var(--line)}}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 14px;color:var(--muted);font-weight:500;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.view{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+@media (max-width:620px){.view{padding:10px}}
+.figtitle{text-align:center;font-weight:600;font-size:1.15rem;margin:0}
+.figsum{white-space:pre-wrap;text-align:center;color:var(--muted);font-size:.86rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
+.plot svg{width:100%;height:auto;display:block}
+.empty{display:grid;place-items:center;min-height:380px;color:var(--muted);text-align:center;font-size:.92rem}
+.empty p{max-width:34ch;margin:0}
+pre.report{font:12.5px/1.55 var(--mono);margin:0;overflow:auto;max-height:70vh;white-space:pre}
+.saves{display:flex;gap:8px;flex-wrap:wrap}
+.saves button:disabled{opacity:.45;cursor:not-allowed}
+[hidden]{display:none!important}
+/* Notice shown at start-up while the demo result is displayed. */
+.demo{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.demo p{margin:0}
+.demo a,.help-body a{color:var(--accent);overflow-wrap:anywhere}
+.demo p.privacy{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+/* "How it works" button in the panel header and the help dialog it opens. */
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.help-btn{flex:none;padding:5px 10px;font-size:.82rem}
+dialog.help{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);box-shadow:0 18px 50px rgba(10,20,40,.28)}
+dialog.help::backdrop{background:rgba(14,22,38,.45)}
+.help-top{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.help-top h2{margin:0;font-size:1.15rem}
+.help-body{padding:4px 20px 22px;line-height:1.6}
+.help-body h3{font-size:1rem;margin:22px 0 6px}
+.help-body h4{font-size:.92rem;margin:14px 0 4px}
+.help-body p,.help-body li{font-size:.92rem;max-width:68ch}
+.help-body p{margin:0 0 8px}
+.help-body ol,.help-body ul{margin:0 0 8px;padding-left:1.4em}
+.help-body li{margin-bottom:4px}
+.eq{display:block;margin:8px 0 10px;padding:8px 12px;background:var(--field);border:1px solid var(--line);border-radius:6px;font-size:.95rem;overflow-x:auto;white-space:nowrap}
+.eq .n{float:right;color:var(--muted);margin-left:16px}
+.help-body table{border-collapse:collapse;font-size:.9rem;margin:4px 0 10px}
+.help-body td{padding:3px 12px 3px 0;vertical-align:top}
+.help-body td:first-child{white-space:nowrap;font-weight:600}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ Input panel ============ -->
+  <aside class="panel" aria-label="Inputs">
+    <div class="head">
+      <h1>Q<sub>10</sub> calculator</h1>
+      <button type="button" class="help-btn" id="btn-help" aria-haspopup="dialog">How it works</button>
+    </div>
+    <p class="sub">Fits period(T) = τ · Q<sub>10</sub><sup>(T<sub>base</sub> − T)/10</sup> to circadian period data.</p>
+
+    <fieldset>
+      <legend><label for="title">Plot title</label></legend>
+      <input id="title" autocomplete="off" type="text" placeholder="Optional">
+    </fieldset>
+
+    <!-- Data box. The <input type=file> for CSV loading is hidden and opened from the button. -->
+    <fieldset>
+      <legend><label for="data">Data, one pair per line</label></legend>
+      <p class="hint">Temperature (°C) and period (h), separated by comma, space or tab. A header line and lines starting with # are skipped.</p>
+      <textarea id="data" autocomplete="off" spellcheck="false" aria-describedby="data-hint"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button type="button" id="btn-csv">Load CSV…</button>
+        <button type="button" id="btn-example">Load example</button>
+        <button type="button" id="btn-clear">Clear</button>
+        <input type="file" id="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="sr" tabindex="-1">
+      </div>
+    </fieldset>
+
+    <!-- Temperature range for the fit (Low/High are enabled only when the box is ticked). -->
+    <fieldset>
+      <legend>Temperature range for the fit</legend>
+      <label class="check"><input type="checkbox" id="use-range" autocomplete="off"> Use only data within a temperature range</label>
+      <div class="row" style="margin-top:8px">
+        <label for="low">Low</label><input id="low" autocomplete="off" type="number" step="0.1" value="25">
+        <label for="high">High</label><input id="high" autocomplete="off" type="number" step="0.1" value="40"><span>°C</span>
+      </div>
+    </fieldset>
+
+    <!-- Base temperature T_b. The options are generated from BASE_CHOICES in the script. -->
+    <fieldset>
+      <legend><label for="base">Base temperature</label></legend>
+      <select id="base" autocomplete="off"></select>
+      <div class="row" style="margin-top:8px">
+        <label for="custom">Custom value</label><input id="custom" autocomplete="off" type="number" step="0.1" value="37"><span>°C</span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <!-- Arrhenius regression line on/off (only redraws; nothing is recalculated). -->
+      <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line on the Arrhenius plot</label>
+      <label class="check" style="margin-top:6px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
+      <div style="margin-top:12px"><button type="button" class="primary" id="btn-run">Calculate <kbd>Ctrl+Enter</kbd></button></div>
+      <div class="status" id="status" role="status" aria-live="polite">Ready.</div>
+    </fieldset>
+  </aside>
+
+  <!-- ============ Output area ============ -->
+  <main class="out">
+    <!-- Start-up notice: demo data + privacy/offline statement. Hidden by Clear
+         (and also when the data box is edited or a CSV is loaded). -->
+    <div class="demo" id="demo" role="note" hidden>
+      <p>You’re looking at a demo calculation using example data. To analyse your own data, click <strong>Clear</strong> and enter your temperature and period pairs in the form.</p>
+      <p class="privacy">All calculations run in your browser. The data you enter and the results are not sent anywhere and are not stored; they are gone when you close or reload the page, unless you save them yourself with the Save buttons. With an internet connection, the only thing the page fetches from outside is web fonts from Google. Once you have this HTML file on your computer, it works without an internet connection. You can download it from <a href="https://github.com/dxda6216/q10/blob/main/index.html" target="_blank" rel="noopener noreferrer">github.com/dxda6216/q10/blob/main/index.html</a> (use the “Download raw file” button on that page).</p>
+    </div>
+    <!-- Main result values (written by updateReadout()). -->
+    <dl class="readout" aria-label="Fit summary">
+      <div><dt>Q<sub>10</sub></dt><dd id="o-q10">–</dd></div>
+      <div><dt id="o-tau-label">τ at base temperature</dt><dd id="o-tau">–</dd></div>
+      <div><dt>R²</dt><dd id="o-r2">–</dd></div>
+      <div><dt>Points in fit</dt><dd id="o-n">–</dd></div>
+    </dl>
+
+    <!-- View tabs. Each data-tab value becomes "current" in render(). -->
+    <div class="tabs" role="tablist" aria-label="Output">
+      <button role="tab" aria-selected="true" data-tab="period">Period</button>
+      <button role="tab" aria-selected="false" data-tab="frequency">Frequency</button>
+      <button role="tab" aria-selected="false" data-tab="arrhenius">Arrhenius</button>
+      <button role="tab" aria-selected="false" data-tab="report">Report</button>
+    </div>
+
+    <section class="view" id="view" role="tabpanel"></section>
+
+    <div class="saves" id="saves">
+      <button type="button" id="save-png" disabled>Save figure (PNG)</button>
+      <button type="button" id="save-svg" disabled>Save figure (SVG)</button>
+      <button type="button" id="save-txt" disabled>Save report (TXT)</button>
+    </div>
+  </main>
+</div>
+
+<!-- ============ "How it works" dialog ============
+     Opened by the "How it works" button. The text summarises the theory,
+     calculation method and usage described in the comment at the top of this file.
+     Closes with the Close button, the Esc key, or a click on the dimmed backdrop. -->
+<dialog class="help" id="help" aria-labelledby="help-title">
+  <div class="help-top">
+    <h2 id="help-title">How this calculator works</h2>
+    <button type="button" id="help-close">Close</button>
+  </div>
+  <div class="help-body">
+
+    <h3>What Q<sub>10</sub> means</h3>
+    <p>Q<sub>10</sub> is the factor by which a rate changes for a 10 °C rise in temperature. From rates R<sub>1</sub> and R<sub>2</sub> measured at temperatures T<sub>1</sub> and T<sub>2</sub>:</p>
+    <span class="eq">Q<sub>10</sub> = (R<sub>2</sub> / R<sub>1</sub>)<sup>10 / (T<sub>2</sub> − T<sub>1</sub>)</sup></span>
+    <p>Typical enzyme-catalysed reactions have Q<sub>10</sub> of about 2 to 3. For a circadian clock, the “rate” is its frequency, 1/period. Circadian clocks are temperature-compensated, so their period changes only a little with temperature and Q<sub>10</sub> is usually close to 1 (roughly 0.8 to 1.2).</p>
+    <table>
+      <tr><td>Q<sub>10</sub> &gt; 1</td><td>Period shortens as temperature rises (the clock runs faster).</td></tr>
+      <tr><td>Q<sub>10</sub> = 1</td><td>Perfect temperature compensation.</td></tr>
+      <tr><td>Q<sub>10</sub> &lt; 1</td><td>Period lengthens as temperature rises (overcompensation).</td></tr>
+    </table>
+
+    <h3>The model that is fitted</h3>
+    <p>With τ<sub>b</sub> the period at the base temperature T<sub>b</sub>:</p>
+    <span class="eq">τ(T) = τ<sub>b</sub> · Q<sub>10</sub><sup>(T<sub>b</sub> − T) / 10</sup><span class="n">(1)</span></span>
+    <p>The frequency, in cycles per day, is f(T) = 24 / τ(T). Taking logarithms gives a straight line in T with slope ln(Q<sub>10</sub>)/10:</p>
+    <span class="eq">ln f(T) = ln(24 / τ<sub>b</sub>) + ((T − T<sub>b</sub>) / 10) · ln Q<sub>10</sub><span class="n">(2)</span></span>
+
+    <h4>The base temperature</h4>
+    <p>The base temperature only decides at which temperature the fitted period τ<sub>b</sub> is reported. Q<sub>10</sub>, its standard error, R² and the fitted curve are the same whatever base you choose; only τ<sub>b</sub> and its error change. A base far outside your data, such as absolute zero (−273.15 °C), makes τ<sub>b</sub> a long extrapolation with a large error.</p>
+
+    <h3>The three plots</h3>
+    <table>
+      <tr><td>Period</td><td>Period (h) against temperature (°C), with the fitted curve from model (1).</td></tr>
+      <tr><td>Frequency</td><td>Frequency, 24/period (day<sup>−1</sup>), against temperature.</td></tr>
+      <tr><td>Arrhenius</td><td>ln(frequency) against 1000/T, where T is in kelvin.</td></tr>
+    </table>
+    <p>The Arrhenius equation k = A · exp(−E<sub>a</sub> / RT) gives a straight line of ln k against 1/T with slope −E<sub>a</sub>/R (E<sub>a</sub> is the activation energy, R = 8.314 J mol<sup>−1</sup> K<sup>−1</sup>). Model (2) is linear in T rather than 1/T, so the fitted curve is slightly bent on the Arrhenius plot. The two descriptions are approximately related by</p>
+    <span class="eq">E<sub>a</sub> ≈ R · T<sub>1</sub> · T<sub>2</sub> · ln(Q<sub>10</sub>) / 10&nbsp;&nbsp;&nbsp;(T<sub>1</sub>, T<sub>2</sub> in kelvin)</span>
+    <p>In every plot, orange points are used in the fit, light-green points are outside the chosen temperature range, and the dashed line is the fitted Q<sub>10</sub> curve.</p>
+
+    <h4>Arrhenius regression line</h4>
+    <p>The Arrhenius plot can also show the ordinary straight-line regression of ln(frequency) on 1000/T (solid grey line), fitted to the same data used for Q<sub>10</sub>:</p>
+    <span class="eq">ln f = intercept + slope · (1000 / T)&nbsp;&nbsp;&nbsp;E<sub>a</sub> = −slope · 1000 · R</span>
+    <p>Its E<sub>a</sub>, slope, intercept, standard errors and R² are listed in the report. The two lines come from different models and are fitted to different residuals (period for Q<sub>10</sub>, ln f for the regression), so they nearly coincide within your data but separate slightly beyond it. Turn the line on or off with <strong>Show Arrhenius regression line</strong>.</p>
+
+    <h3>How the fit is calculated</h3>
+    <ol>
+      <li><strong>Objective.</strong> Non-linear least squares on the period itself (not its logarithm), minimising SSE = Σ (τ<sub>i</sub> − τ̂(T<sub>i</sub>))². This is the same objective as SciPy’s <code>curve_fit</code> in the original Python program, so the results agree.</li>
+      <li><strong>Starting values.</strong> A straight-line regression of ln(period) on temperature, converted to τ<sub>b</sub> and Q<sub>10</sub> through equation (2).</li>
+      <li><strong>Optimisation.</strong> The Levenberg–Marquardt method, working on ln τ<sub>b</sub> and ln Q<sub>10</sub> so both stay positive. Each step solves (JᵀJ + λ·diag(JᵀJ))·δ = Jᵀr; λ shrinks after a step that lowers SSE and grows after one that doesn’t.</li>
+      <li><strong>Standard errors.</strong> From the covariance matrix s² · (JᵀJ)<sup>−1</sup> with s² = SSE / (n − 2), where J is the Jacobian with respect to τ<sub>b</sub> and Q<sub>10</sub>. The ± values are the square roots of its diagonal.</li>
+      <li><strong>Goodness of fit.</strong> R² = 1 − SSE / SST, where SST = Σ (τ<sub>i</sub> − mean τ)².</li>
+      <li><strong>Fitted curve.</strong> Drawn with 200 points across the data’s temperature range, extended on each side by a third of its width.</li>
+    </ol>
+
+    <h3>How to use it</h3>
+    <ol>
+      <li>The page opens with a demo calculation of example data. Click <strong>Clear</strong> to start with your own.</li>
+      <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
+      <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included).</li>
+      <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
+      <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
+      <li>Switch between the Period, Frequency, Arrhenius and Report tabs.</li>
+      <li><strong>Save figure</strong> saves all three plots stacked in one PNG or SVG image. <strong>Save report</strong> saves the results as a text file; tick <strong>Also show tab-delimited data</strong> to include data you can paste into a spreadsheet.</li>
+    </ol>
+
+    <h3>Privacy and offline use</h3>
+    <ul>
+      <li><strong>Calculations run in your browser.</strong> The fit, the plots and the report are all computed by the JavaScript in this file on your own computer.</li>
+      <li><strong>Nothing is sent.</strong> The data you enter and the results are never sent to any server. The page contains no code that uploads, transmits or reports anything.</li>
+      <li><strong>Nothing is stored.</strong> The page does not use cookies or browser storage, and it asks the browser not to remember form contents. Your data and results disappear when you close or reload the page. Files are written only when you click a Save button, and only to the place you choose.</li>
+      <li><strong>The only outside request is for fonts.</strong> With an internet connection, the browser downloads the page’s typefaces from Google Fonts (fonts.googleapis.com and fonts.gstatic.com). That request contains none of your data, but like any web request it lets Google see your IP address and browser type.</li>
+      <li><strong>Works offline.</strong> Once you have the HTML file on your computer, you can open it and calculate without an internet connection. Only the typefaces change: the page falls back to your system fonts.</li>
+      <li><strong>Download.</strong> The HTML file is available from <a href="https://github.com/dxda6216/q10/blob/main/index.html" target="_blank" rel="noopener noreferrer">github.com/dxda6216/q10/blob/main/index.html</a>. On that page, click the “Download raw file” button, then open the saved file in your browser. Following this link is the only other way the page connects to the internet, and only when you click it.</li>
+    </ul>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+/* =====================================================================
+   Constants
+   ===================================================================== */
+// Degree sign (°).
+const DEG = "\u00B0";
+// Demo data (same values as the Python version). Temperature in °C, period in h.
+const EXAMPLE_TEMPS = "25.1, 26.9, 27.3, 29.2, 30, 31.7, 32.2, 33.5, 34.1, 35.3, 35.8, 36.5, 37.1, 38.5, 38.9, 39.3, 40.3, 41.1";
+const EXAMPLE_PERIODS = "33.6, 32.8, 30.4, 29.3, 28.0, 27.9, 26.1, 25.5, 24.9, 24.8, 24.5, 24.4, 24.1, 23.9, 23.6, 21.9, 21.5, 20.1";
+const EXAMPLE_DATA = EXAMPLE_TEMPS.split(",").map((t, i) => `${t.trim()}, ${EXAMPLE_PERIODS.split(",")[i].trim()}`).join("\n");
+
+// Base-temperature options: [internal id, label, fixed value (if any)].
+// Options without a fixed value (min/max/mean/median) are computed from the fitted data.
+const BASE_CHOICES = [
+  ["abs", `-273.15${DEG}C (absolute zero)`, -273.15],
+  ["0", `0${DEG}C`, 0], ["4", `4${DEG}C`, 4], ["25", `25${DEG}C`, 25], ["30", `30${DEG}C`, 30],
+  ["37", `37${DEG}C`, 37], ["100", `100${DEG}C`, 100],
+  ["min", "Minimum"], ["max", "Maximum"], ["mean", "Average"], ["median", "Median"],
+  ["custom", "Custom value (enter below)"],
+];
+
+/* =====================================================================
+   Calculation core
+   Pure calculation code that never touches the page (DOM).
+   Flow: parsePairs() -> analyze() -> fitQ10()
+   ===================================================================== */
+/* ================= Calculation core ================= */
+
+// True if the string is a well-formed number ("1.5", "-3", "2e-1", ...).
+const isNum = s => /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s);
+
+// Convert the data-box text into [temperatures, periods].
+//  - separators: comma / space / tab / semicolon (may be mixed)
+//  - blank lines and lines starting with "#" are ignored
+//  - one leading non-numeric line is skipped as a header
+//  - a line with other than 2 values, or an unreadable line, raises an error with its line number
+function parsePairs(text) {
+  const temps = [], periods = [];
+  let headerSkipped = false;
+  text.split(/\r?\n/).forEach((line, idx) => {
+    const s = line.trim(), n = idx + 1;
+    if (!s || s.startsWith("#")) return;
+    const tokens = s.split(/[,;\s]+/).filter(Boolean);
+    if (!tokens.every(isNum)) {
+      if (!temps.length && !headerSkipped) { headerSkipped = true; return; }
+      throw new Error(`Line ${n}: cannot read numbers: “${s}”`);
+    }
+    if (tokens.length !== 2) throw new Error(`Line ${n}: expected 2 values (temperature, period), found ${tokens.length}: “${s}”`);
+    temps.push(+tokens[0]); periods.push(+tokens[1]);
+  });
+  return [temps, periods];
+}
+
+// Mean and median (median of an even count = mean of the two middle values), as in Python's statistics module.
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+function median(a) { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+
+// Turn the selected base temperature T_b into a number.
+// Minimum/Maximum/Average/Median are taken from xa, the data USED in the fit
+// (only the in-range points when a temperature range is set).
+function resolveBase(sel, custom, xa) {
+  const c = BASE_CHOICES.find(b => b[0] === sel);
+  if (c && c.length === 3) return c[2];
+  if (sel === "min") return Math.min(...xa);
+  if (sel === "max") return Math.max(...xa);
+  if (sel === "mean") return mean(xa);
+  if (sel === "median") return median(xa);
+  return custom;
+}
+
+// Model (1): tau(T) = tau_b * Q10^((T_b - T)/10)
+const model = (T, tau, q10, base) => tau * Math.pow(q10, (base - T) * 0.1);
+
+// Inverse of the 2x2 matrix [[a, b], [c, d]], returned as [a', b', c', d'].
+// Returns null if the determinant is 0 or not finite (singular matrix).
+function inv2(a, b, c, d) { const det = a * d - b * c; return det === 0 || !isFinite(det) ? null : [d / det, -b / det, -c / det, a / det]; }
+
+/* Levenberg–Marquardt least squares (iterates on ln τ, ln Q10; same minimum as scipy curve_fit). */
+/* ---------------------------------------------------------------------
+   fitQ10: find tau_b and Q10 by non-linear least squares (Levenberg-Marquardt)
+   ---------------------------------------------------------------------
+   With e_i = (T_b - T_i)/10, model (1) can be written
+       tau_hat_i = exp(a + b * e_i),   a = ln(tau_b),  b = ln(Q10)
+   The quantity minimised is the sum of squared residuals of the period itself
+       SSE(a, b) = sum_i (y_i - tau_hat_i)^2
+   (working with log-parameters does not change the objective, so the minimum
+    is the same one scipy.optimize.curve_fit finds).
+
+   Each iteration solves the damped normal equations (Marquardt scaling):
+       (J^T J + lambda * diag(J^T J)) * delta = J^T r
+   where J is the Jacobian with respect to (a, b) and r = y - tau_hat:
+       d tau_hat_i / da = tau_hat_i,   d tau_hat_i / db = tau_hat_i * e_i
+   If SSE decreases, the step is accepted and lambda is divided by 10 (moving
+   towards Gauss-Newton); otherwise lambda is multiplied by 10 (moving towards
+   steepest descent) and the step is retried. Iteration stops when no step
+   improves SSE or the change becomes negligible.
+
+   Returns { popt: [tau_b, Q10], perr: [SE of tau_b, SE of Q10], r2: R^2 }
+   --------------------------------------------------------------------- */
+function fitQ10(xa, ya, base) {
+  // Precompute e_i = (T_b - T_i)/10.
+  const e = xa.map(T => (base - T) / 10), n = xa.length;
+  // log-linear starting point
+  // ---- (1) Starting values ----
+  // Regress ln(tau) = c + s*T, then use relation (2):
+  //     s = -ln(Q10)/10,   c = ln(tau_b) + (T_b/10)*ln(Q10)
+  // giving ln(Q10) = -10*s and ln(tau_b) = c - (T_b/10)*ln(Q10).
+  // If the regression fails, start from (tau_b, Q10) = (24, 1) as the Python version does.
+  const mx = mean(xa), ly = ya.map(Math.log), my = mean(ly);
+  let sxx = 0, sxy = 0;
+  xa.forEach((x, i) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (ly[i] - my); });
+  const slope = sxy / sxx, icpt = my - slope * mx;
+  let lq = -10 * slope, la = icpt - (base / 10) * lq;
+  if (!isFinite(lq) || !isFinite(la)) { la = Math.log(24); lq = 0; }
+
+
+  // ---- (2) Levenberg-Marquardt iterations ----
+  // sse(a, b): sum of squared residuals for parameters (a, b).
+  const sse = (a, b) => { let s = 0; for (let i = 0; i < n; i++) { const r = ya[i] - Math.exp(a + b * e[i]); s += r * r; } return s; };
+  let cur = sse(la, lq), lambda = 1e-3;
+  for (let it = 0; it < 500; it++) {
+    // Build J^T J = [[A, B], [B, D]] and the gradient J^T r = [ga, gb].
+    let A = 0, B = 0, D = 0, ga = 0, gb = 0;
+    for (let i = 0; i < n; i++) {
+      const f = Math.exp(la + lq * e[i]), r = ya[i] - f, j1 = f, j2 = f * e[i];
+      A += j1 * j1; B += j1 * j2; D += j2 * j2; ga += j1 * r; gb += j2 * r;
+    }
+    // Adjust lambda until a step delta = (da, db) that lowers SSE is found.
+    let improved = false;
+    for (let k = 0; k < 30; k++) {
+      const inv = inv2(A * (1 + lambda), B, B, D * (1 + lambda));
+      if (!inv) { lambda *= 10; continue; }
+      const da = inv[0] * ga + inv[1] * gb, db = inv[2] * ga + inv[3] * gb;
+      const nxt = sse(la + da, lq + db);
+      if (isFinite(nxt) && nxt <= cur) {
+        const rel = (cur - nxt) / Math.max(cur, 1e-300);
+        la += da; lq += db; cur = nxt; lambda = Math.max(lambda / 10, 1e-12); improved = true;
+        if (rel < 1e-14 && Math.abs(da) + Math.abs(db) < 1e-13) it = 1e9;
+        break;
+      }
+      lambda *= 10;
+    }
+    if (!improved) break;
+  }
+
+  // Convert the log-parameters back.
+  const tau = Math.exp(la), q10 = Math.exp(lq);
+  if (!isFinite(tau) || !isFinite(q10)) throw new Error("The fit did not converge for these data.");
+
+  // covariance in (τ, Q10), scaled by residual variance as in curve_fit (absolute_sigma=False)
+  // ---- (3) Standard errors ----
+  // Evaluate the Jacobian with respect to the original parameters (tau_b, Q10)
+  // at the solution and take
+  //     Cov = s^2 * (J^T J)^-1,   s^2 = SSE / (n - 2)   (degrees of freedom = n - 2 parameters)
+  // as curve_fit does with absolute_sigma=False.
+  //     d tau / d tau_b = tau / tau_b,   d tau / d Q10 = tau * e_i / Q10
+  // If the matrix cannot be inverted (degenerate data), the errors are set to infinity.
+  let A = 0, B = 0, D = 0;
+  for (let i = 0; i < n; i++) {
+    const f = model(xa[i], tau, q10, base), j1 = f / tau, j2 = f * e[i] / q10;
+    A += j1 * j1; B += j1 * j2; D += j2 * j2;
+  }
+  const s2 = cur / (n - 2), inv = inv2(A, B, B, D);
+  const perr = inv ? [Math.sqrt(Math.abs(inv[0] * s2)), Math.sqrt(Math.abs(inv[3] * s2))] : [Infinity, Infinity];
+  // ---- (4) Coefficient of determination R^2 = 1 - SSE/SST ----
+  const my2 = mean(ya), ssTot = ya.reduce((s, v) => s + (v - my2) ** 2, 0);
+  return { popt: [tau, q10], perr, r2: ssTot > 0 ? 1 - cur / ssTot : NaN };
+}
+
+/* ---------------------------------------------------------------------
+   analyze: run the whole calculation and return everything needed for
+   plotting and the report
+     x, y      : temperatures and periods of all data
+     useRange  : whether to restrict the fit to a temperature range
+     low, high : range limits in °C (inclusive)
+     baseSel   : id of the selected base temperature; custom: custom value
+   Steps:
+     1) validate input (equal counts, at least 3 points, periods > 0)
+     2) if a range is set, keep only points with low <= T <= high in xa, ya
+     3) resolve the base temperature, then fit with fitQ10()
+     4) build the fitted-curve points (fcx, fcy)
+   In the result, xa/ya are the data used for Q10 and x/y are all data.
+   --------------------------------------------------------------------- */
+function analyze(x, y, useRange, low, high, baseSel, custom) {
+  if (x.length !== y.length) throw new Error(`Number of temperatures (${x.length}) and periods (${y.length}) differ.`);
+  if (x.length < 3) throw new Error("Enter at least 3 data points.");
+  if (y.some(v => v <= 0)) throw new Error("All periods must be positive.");
+  let xa = x, ya = y;
+  if (useRange) {
+    if (!(low < high)) throw new Error("Range low limit must be smaller than the high limit.");
+    const idx = x.map((v, i) => i).filter(i => x[i] >= low && x[i] <= high);
+    xa = idx.map(i => x[i]); ya = idx.map(i => y[i]);
+  }
+  if (xa.length < 3) throw new Error(`Only ${xa.length} data point(s) in the selected range; need at least 3.`);
+  if (!isFinite(custom) && baseSel === "custom") throw new Error("Enter a custom base temperature.");
+  const base = resolveBase(baseSel, custom, xa);
+  const fit = fitQ10(xa, ya, base);
+  // Fitted-curve range: the full data range extended by 33.3 % of its width on each side,
+  // truncated towards zero like Python's int() (upper end + 1), sampled at 200 points.
+  const xmin = Math.min(...x), xmax = Math.max(...x), margin = (xmax - xmin) * 0.333;
+  const lo = Math.trunc(xmin - margin), hi = Math.trunc(xmax + margin) + 1;
+  const fcx = Array.from({ length: 200 }, (_, i) => lo + (hi - lo) * i / 199);
+  const fcy = fcx.map(T => model(T, fit.popt[0], fit.popt[1], base));
+  const arr = arrheniusFit(xa, ya);
+  return { x, y, xa, ya, useRange, base, ...fit, fcx, fcy, arr };
+}
+
+/* ---------------------------------------------------------------------
+   arrheniusFit: ordinary least-squares straight line of ln(frequency)
+   against 1000/T_K, i.e. the classical Arrhenius regression
+       x_i = 1000 / (T_i + 273.15),  y_i = ln(24 / tau_i)
+       y = intercept + slope * x
+   Standard errors use s^2 = SSE / (n - 2):
+       SE(slope) = sqrt(s^2 / Sxx),  SE(intercept) = sqrt(s^2 * (1/n + mean(x)^2 / Sxx))
+   Activation energy: Ea = -slope * 1000 * R (J/mol), SE(Ea) = SE(slope) * 1000 * R.
+   Called with the data used for the Q10 fit, so both fits use the same points.
+   --------------------------------------------------------------------- */
+const R_GAS = 8.314462618;  // gas constant, J mol^-1 K^-1
+function arrheniusFit(T, P) {
+  const n = T.length, x = T.map(t => 1000 / (t + 273.15)), y = P.map(p => Math.log(24 / p));
+  const mx = mean(x), my = mean(y);
+  let sxx = 0, sxy = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxx += (x[i] - mx) ** 2; sxy += (x[i] - mx) * (y[i] - my); syy += (y[i] - my) ** 2; }
+  const slope = sxy / sxx, intercept = my - slope * mx;
+  let sse = 0;
+  for (let i = 0; i < n; i++) sse += (y[i] - intercept - slope * x[i]) ** 2;
+  const s2 = sse / (n - 2), seSlope = Math.sqrt(s2 / sxx), seInt = Math.sqrt(s2 * (1 / n + mx * mx / sxx));
+  return {
+    slope, intercept, seSlope, seInt, r2: syy > 0 ? 1 - sse / syy : NaN,
+    Ea: -slope * 1000 * R_GAS, seEa: seSlope * 1000 * R_GAS,  // J/mol
+    // ln f predicted by the regression for a temperature in °C
+    lnf: t => intercept + slope * 1000 / (t + 273.15),
+  };
+}
+
+/* =====================================================================
+   Report (the Report tab and "Save report")
+   Formatted exactly like the output of the Python version.
+   ===================================================================== */
+/* ================= Report text ================= */
+
+// Format with 3 decimal places.
+const f3 = v => v.toFixed(3);
+// Minimum, maximum, average and median, one per line.
+function statsText(a, name, unit) {
+  return `Minimum ${name} = ${f3(Math.min(...a))} ${unit}\nMaximum ${name} = ${f3(Math.max(...a))} ${unit}\n` +
+         `Average ${name} = ${f3(mean(a))} ${unit}\nMedian ${name}  = ${f3(median(a))} ${unit}\n`;
+}
+// Fixed-width, right-aligned table of index, temperature and period.
+function tableText(x, y) {
+  const L = ["#".padStart(4) + "  " + "Temperature".padStart(12) + "  " + "Period".padStart(10)];
+  x.forEach((xi, i) => L.push(String(i).padStart(4) + "  " + f3(xi).padStart(12) + "  " + f3(y[i]).padStart(10)));
+  return L.join("\n");
+}
+// Assemble the full report:
+//   INPUT DATA -> (if a range is set) DATA USED FOR Q10 CALCULATION ->
+//   (if tabbed) tab-delimited dataset and fitted curve -> RESULTS
+// The tab-delimited part can be pasted straight into a spreadsheet.
+// The Arrhenius regression results (and, if tabbed, its line) are always included.
+function reportText(r, tabbed) {
+  const [tau, q10] = r.popt, [te, qe] = r.perr;
+  let out = ["INPUT DATA", tableText(r.x, r.y), "", statsText(r.x, "temperature", DEG + "C"), statsText(r.y, "period", "h")];
+  if (r.useRange) out.push("DATA USED FOR Q10 CALCULATION", tableText(r.xa, r.ya), "", statsText(r.xa, "temperature", DEG + "C"), statsText(r.ya, "period", "h"));
+  if (tabbed) {
+    out.push("DATASET", `Temp (${DEG}C)\tPeriod (hours)`, ...r.x.map((a, i) => `${f3(a)}\t${f3(r.y[i])}`));
+    out.push("", "FITTED CURVE", `Temp (${DEG}C)\tPeriod (hours)`, ...r.fcx.map((a, i) => `${f3(a)}\t${f3(r.fcy[i])}`), "");
+    out.push("ARRHENIUS REGRESSION LINE", `Temp (${DEG}C)\t1000/T (1/K)\tln(Frequency)`,
+      ...r.fcx.map(t => `${f3(t)}\t${(1000 / (t + 273.15)).toFixed(5)}\t${r.arr.lnf(t).toFixed(5)}`), "");
+  }
+  out.push("RESULTS",
+    `Estimated period length at ${r.base.toFixed(2)} ${DEG}C = ${f3(tau)} \u00B1 ${f3(te)} hours`,
+    `Q10 (temperature coefficient) = ${f3(q10)} \u00B1 ${f3(qe)}`,
+    `R\u00B2 = ${r.r2.toFixed(6)}`,
+    "",
+    "ARRHENIUS REGRESSION (ln(Frequency) vs. 1000/T, data used for Q10 calculation)",
+    `Activation energy Ea = ${(r.arr.Ea / 1000).toFixed(3)} \u00B1 ${(r.arr.seEa / 1000).toFixed(3)} kJ/mol`,
+    `Slope d ln(f) / d(1000/T) = ${r.arr.slope.toFixed(4)} \u00B1 ${r.arr.seSlope.toFixed(4)} (10\u00B3 K)`,
+    `Intercept = ${r.arr.intercept.toFixed(4)} \u00B1 ${r.arr.seInt.toFixed(4)}`,
+    `R\u00B2 = ${r.arr.r2.toFixed(6)}`);
+  return out.join("\n");
+}
+// Two-line summary shown above the plots.
+const summaryLines = r => [
+  `Est. τ at ${r.base.toFixed(2)}${DEG}C = ${f3(r.popt[0])} ± ${f3(r.perr[0])} h`,
+  `Q₁₀ = ${f3(r.popt[1])} ± ${f3(r.perr[1])}    R² = ${r.r2.toFixed(4)}`];
+
+/* =====================================================================
+   Plotting (SVG)
+   No external library: SVG markup is built as strings. The same functions
+   draw the on-screen plots and the saved figure; only the colours differ.
+   ===================================================================== */
+/* ================= Plotting (SVG) ================= */
+
+// The three plots. tx and ty map (temperature, period) to the plot's (x, y):
+//   period    : x = T (°C),            y = tau (h)
+//   frequency : x = T (°C),            y = 24/tau (day^-1)
+//   arrhenius : x = 1000/(T + 273.15), y = ln(24/tau)
+// Data points and the fitted curve go through the same mapping, so every plot is consistent.
+const PLOTS = {
+  period: { title: "Temperature vs. Period", xl: `Temperature (${DEG}C)`, yl: "Period (hours)", tx: t => t, ty: p => p },
+  frequency: { title: "Temperature vs. Frequency", xl: `Temperature (${DEG}C)`, yl: "Frequency (day⁻¹)", tx: t => t, ty: p => 24 / p },
+  arrhenius: { title: "Arrhenius plot: 1000/T vs. ln(frequency)", xl: "1000/Temperature (K⁻¹)", yl: "ln(Frequency) (ln(day⁻¹))", tx: t => 1000 / (t + 273.15), ty: p => Math.log(24 / p) },
+};
+// Colour sets. SCREEN refers to CSS variables so it follows the light/dark theme.
+// PRINT uses fixed colours for the saved figure, so the file looks right on its own.
+const SCREEN = { ink: "var(--ink)", axis: "var(--axis)", grid: "var(--grid)", used: "var(--used)", excl: "var(--excluded)", fit: "var(--fit)", arr: "var(--arr)", bg: "var(--panel)", line: "var(--line)", font: "var(--sans)" };
+const PRINT = { ink: "#18233A", axis: "#6B7486", grid: "#E6EAF0", used: "#C2410C", excl: "#8DBB90", fit: "#2F4FB5", arr: "#4B5563", bg: "#FFFFFF", line: "#D5DBE5", font: "Helvetica, Arial, sans-serif" };
+
+// Axis ticks: divide (hi - lo) into about "count" steps, round the step to a
+// "nice" value (1, 2, 5 or 10 x 10^k) and use its multiples. dec = decimals to show.
+function niceTicks(lo, hi, count = 6) {
+  const span = hi - lo || 1, raw = span / count, mag = Math.pow(10, Math.floor(Math.log10(raw))), nr = raw / mag;
+  const step = (nr < 1.5 ? 1 : nr < 3 ? 2 : nr < 7 ? 5 : 10) * mag;
+  const t = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) t.push(+v.toFixed(12));
+  const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return { t, dec };
+}
+// Escape text placed in SVG/HTML (neutralises < and &).
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+/* ---------------------------------------------------------------------
+   plotSVG: return one plot as an SVG string
+     kind       : "period" | "frequency" | "arrhenius"
+     r          : result of analyze()
+     c          : colour set (SCREEN or PRINT)
+     W, H       : overall size in px
+     ox, oy     : drawing offset (used to stack three plots in one figure)
+     standalone : if true, wrap the output in an <svg> element
+   Steps:
+     1) map data points and fitted curve to (x, y), dropping non-finite values
+     2) axis limits = range covering both, plus 5 % padding (like matplotlib)
+     3) build data -> screen transforms sx, sy (y is flipped)
+     4) draw ticks, grid, frame, axis labels -> out-of-range points (green)
+        -> points used in the fit -> dashed fitted curve
+     5) place the legend in the corner where it overlaps the fewest points
+     showArr    : on the Arrhenius plot, also draw the Arrhenius regression
+                  line (solid) over the same temperature span as the Q10 curve
+   --------------------------------------------------------------------- */
+function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = false, showArr = false) {
+  const P = PLOTS[kind], m = { l: 70, r: 18, t: 38, b: 56 };
+  const pts = r.x.map((t, i) => [P.tx(t), P.ty(r.y[i])]);
+  const used = r.xa.map((t, i) => [P.tx(t), P.ty(r.ya[i])]);
+  const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+  const arrOn = showArr && kind === "arrhenius";
+  const arrLine = arrOn ? r.fcx.map(t => [P.tx(t), r.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
+  const all = [...pts, ...fit, ...arrLine];
+  let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0]));
+  let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
+  const px = (x1 - x0 || 1) * 0.05, py = (y1 - y0 || 1) * 0.05; x0 -= px; x1 += px; y0 -= py; y1 += py;
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const sx = v => ox + m.l + (v - x0) / (x1 - x0) * pw, sy = v => oy + m.t + ph - (v - y0) / (y1 - y0) * ph;
+  const xt = niceTicks(x0, x1), yt = niceTicks(y0, y1);
+  let s = "";
+  if (standalone) s += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="${c.font}">`;
+  s += `<text x="${ox + m.l + pw / 2}" y="${oy + 22}" text-anchor="middle" font-size="15" font-weight="600" fill="${c.ink}">${esc(P.title)}</text>`;
+  xt.t.forEach(v => { const X = sx(v); s += `<line x1="${X}" x2="${X}" y1="${oy + m.t}" y2="${oy + m.t + ph}" stroke="${c.grid}"/><text x="${X}" y="${oy + m.t + ph + 18}" text-anchor="middle" font-size="12" fill="${c.axis}">${v.toFixed(xt.dec)}</text>`; });
+  yt.t.forEach(v => { const Y = sy(v); s += `<line x1="${ox + m.l}" x2="${ox + m.l + pw}" y1="${Y}" y2="${Y}" stroke="${c.grid}"/><text x="${ox + m.l - 8}" y="${Y + 4}" text-anchor="end" font-size="12" fill="${c.axis}">${v.toFixed(yt.dec)}</text>`; });
+  s += `<rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}" fill="none" stroke="${c.axis}"/>`;
+  s += `<text x="${ox + m.l + pw / 2}" y="${oy + H - 12}" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.xl)}</text>`;
+  s += `<text transform="translate(${ox + 18} ${oy + m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.yl)}</text>`;
+  if (r.useRange) pts.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${c.excl}"/>`);
+  used.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="${c.used}"/>`);
+  if (arrOn) s += `<polyline fill="none" stroke="${c.arr}" stroke-width="1.5" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  s += `<polyline fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  // legend in the emptiest corner
+  // Legend: for each of the four corners, count the points that would fall inside
+  // the legend box, and use the corner with the fewest (a simple version of
+  // matplotlib's loc="best").
+  const items = r.useRange
+    ? [["dot", c.excl, "Data"], ["dot", c.used, "Data used for Q₁₀ calculation"], ["line", c.fit, `Fit   Q₁₀ = ${f3(r.popt[1])}`]]
+    : [["dot", c.used, "Data"], ["line", c.fit, `Fit   Q₁₀ = ${f3(r.popt[1])}`]];
+  if (arrOn) items.push(["solid", c.arr, `Arrhenius regression   Ea = ${(r.arr.Ea / 1000).toFixed(2)} kJ/mol`]);
+  const lw = Math.max(...items.map(i => i[2].length)) * 6.6 + 44, lh = items.length * 20 + 10;
+  const corners = [[m.l + 8, m.t + 8], [m.l + pw - lw - 8, m.t + 8], [m.l + 8, m.t + ph - lh - 8], [m.l + pw - lw - 8, m.t + ph - lh - 8]];
+  const hits = ([cx, cy]) => pts.concat(fit.filter((_, i) => i % 4 === 0), arrLine.filter((_, i) => i % 4 === 0)).filter(p => { const X = sx(p[0]) - ox, Y = sy(p[1]) - oy; return X > cx - 4 && X < cx + lw + 4 && Y > cy - 4 && Y < cy + lh + 4; }).length;
+  const [lx, ly] = corners.reduce((b, k) => hits(k) < hits(b) ? k : b);
+  s += `<rect x="${ox + lx}" y="${oy + ly}" width="${lw}" height="${lh}" rx="5" fill="${c.bg}" fill-opacity=".9" stroke="${c.line}"/>`;
+  items.forEach(([t, col, label], i) => {
+    const Y = oy + ly + 17 + i * 20;
+    s += t === "dot" ? `<circle cx="${ox + lx + 18}" cy="${Y - 4}" r="4.5" fill="${col}"/>`
+       : t === "solid" ? `<line x1="${ox + lx + 6}" x2="${ox + lx + 30}" y1="${Y - 4}" y2="${Y - 4}" stroke="${col}" stroke-width="1.5"/>`
+                       : `<line x1="${ox + lx + 6}" x2="${ox + lx + 30}" y1="${Y - 4}" y2="${Y - 4}" stroke="${col}" stroke-width="2" stroke-dasharray="7 5"/>`;
+    s += `<text x="${ox + lx + 38}" y="${Y}" font-size="12" fill="${c.ink}">${esc(label)}</text>`;
+  });
+  if (standalone) s += "</svg>";
+  return s;
+}
+
+// Figure for saving: title and two summary lines, then the three plots stacked
+// vertically in one SVG (same layout as "Save figure" in the Python version). White background.
+// showArr adds the Arrhenius regression line to the Arrhenius plot.
+function combinedSVG(r, title, showArr = false) {
+  const W = 800, PH = 560, c = PRINT;
+  let y = 20, head = "";
+  if (title) { head += `<text x="${W / 2}" y="${y + 20}" text-anchor="middle" font-size="22" font-weight="600" fill="${c.ink}">${esc(title)}</text>`; y += 42; }
+  summaryLines(r).forEach(l => { head += `<text x="${W / 2}" y="${y + 14}" text-anchor="middle" font-size="14" fill="${c.ink}">${esc(l)}</text>`; y += 20; });
+  y += 10;
+  let body = "";
+  ["period", "frequency", "arrhenius"].forEach((k, i) => body += plotSVG(k, r, c, W, PH, 0, y + i * PH, false, showArr));
+  const H = y + 3 * PH + 10;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${c.font}"><rect width="100%" height="100%" fill="#fff"/>${head}${body}</svg>`;
+}
+
+/* =====================================================================
+   UI
+   User action -> run() -> analyze() -> updateReadout() and render().
+   The last result is kept in "result" and reused for tab switches and
+   saving (nothing is recalculated).
+   ===================================================================== */
+/* ================= UI ================= */
+
+// Short helper for getElementById, and references to frequently used elements.
+const $ = id => document.getElementById(id);
+const els = { data: $("data"), title: $("title"), useRange: $("use-range"), low: $("low"), high: $("high"), base: $("base"), custom: $("custom"), tab: $("tabdelim"), showArr: $("show-arr"), status: $("status"), view: $("view") };
+// Fill the base-temperature drop-down (default 37 °C).
+BASE_CHOICES.forEach(([v, label]) => els.base.add(new Option(label, v, v === "37", v === "37")));
+// result  : last successful analyze() result (null before calculating or after Clear)
+// current : the tab being shown
+let result = null, current = "period";
+
+// Enable/disable the Low, High and Custom inputs according to the checkbox and selection.
+function toggleStates() {
+  els.low.disabled = els.high.disabled = !els.useRange.checked;
+  els.custom.disabled = els.base.value !== "custom";
+}
+// Show a message in the status line; err=true shows it as an error (also announced to screen readers).
+function setStatus(msg, err = false) { els.status.textContent = msg; els.status.classList.toggle("error", err); els.status.setAttribute("role", err ? "alert" : "status"); }
+
+// Redraw the current tab:
+//   nothing calculated -> prompt text
+//   Report tab         -> reportText() as is
+//   plot tabs          -> title, summary and plotSVG()
+function render() {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === current));
+  if (!result) {
+    els.view.innerHTML = `<div class="empty"><p>Paste temperature and period pairs, or load the example, then calculate.</p></div>`;
+    return;
+  }
+  if (current === "report") { els.view.innerHTML = `<pre class="report"></pre>`; els.view.firstChild.textContent = reportText(result, els.tab.checked); return; }
+  const t = els.title.value.trim(), [l1, l2] = summaryLines(result);
+  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked)}</div>`;
+  if (t) els.view.querySelector(".figtitle").textContent = t;
+}
+
+// Plot size for the available width. On narrow screens a smaller coordinate system
+// is used so that text does not become too small when the SVG is scaled down.
+function plotSize() { const w = els.view.clientWidth; return w < 560 ? [440, 360] : [680, 460]; }
+let lastSize = 0;
+window.addEventListener("resize", () => { const s = plotSize()[0]; if (s !== lastSize) { lastSize = s; if (result && current !== "report") render(); } });
+
+// Update the Q10 / tau / R^2 / points-used readout and enable or disable the save buttons.
+function updateReadout() {
+  const r = result;
+  $("o-q10").innerHTML = r ? `${f3(r.popt[1])}<small>± ${f3(r.perr[1])}</small>` : "–";
+  $("o-tau").innerHTML = r ? `${f3(r.popt[0])}<small>± ${f3(r.perr[0])} h</small>` : "–";
+  $("o-tau-label").textContent = r ? `τ at ${r.base.toFixed(2)}${DEG}C` : "τ at base temperature";
+  $("o-r2").textContent = r ? r.r2.toFixed(4) : "–";
+  $("o-n").innerHTML = r ? `${r.xa.length}<small>of ${r.x.length}</small>` : "–";
+  ["save-png", "save-svg", "save-txt"].forEach(id => $(id).disabled = !r);
+}
+
+// "Calculate": read the inputs -> analyze() -> update the display on success.
+// On failure, "result" is left unchanged and only an error message is shown.
+function run() {
+  try {
+    const [t, p] = parsePairs(els.data.value);
+    const useRange = els.useRange.checked;
+    result = analyze(t, p, useRange, parseFloat(els.low.value), parseFloat(els.high.value), els.base.value, parseFloat(els.custom.value));
+  } catch (e) { setStatus("Cannot calculate: " + e.message, true); return; }
+  const [tau, q10] = result.popt;
+  setStatus(`Q10 = ${f3(q10)}, τ = ${f3(tau)} h at ${result.base.toFixed(2)}${DEG}C, R² = ${result.r2.toFixed(4)}`);
+  if (current === "report") current = "period";
+  updateReadout(); render();
+}
+
+// Hide the start-up notice (demo + privacy statement); called by Clear, editing the data, or loading a CSV.
+function hideDemo() { $("demo").hidden = true; }
+
+// "Clear": remove the data, title, results and plots.
+function clearAll() {
+  hideDemo();
+  els.data.value = ""; els.title.value = ""; result = null;
+  updateReadout(); render(); setStatus("Cleared.");
+}
+
+// Read CSV/TSV/text: split each line on separators and keep only rows whose first two
+// columns are both numbers (header lines are skipped automatically). The rows are
+// written into the data box, so they can be checked or edited before calculating.
+function loadCSVText(text, name) {
+  const rows = [];
+  text.replace(/^\uFEFF/, "").split(/\r?\n/).forEach(line => {
+    const cells = line.split(/[,;\t ]+/).map(s => s.trim()).filter(Boolean);
+    if (cells.length >= 2 && isNum(cells[0]) && isNum(cells[1])) rows.push([+cells[0], +cells[1]]);
+  });
+  if (!rows.length) { setStatus("Load failed: no numeric rows found (need two numeric columns).", true); return; }
+  els.data.value = rows.map(([a, b]) => `${a}, ${b}`).join("\n");
+  setStatus(`Loaded ${rows.length} rows from ${name}.`);
+}
+
+// Base for saved file names (the plot title with symbols removed).
+function fileBase() { return (els.title.value.trim() || "q10").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "q10"; }
+
+// Save a file: wrap the data in a Blob, create an object URL and click a
+// temporary <a download> link so the browser saves it.
+function save(filename, data) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: filename.endsWith(".svg") ? "image/svg+xml" : "text/plain;charset=utf-8" });
+  const a = document.createElement("a"), url = URL.createObjectURL(blob);
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus(`Saved ${filename}.`);
+}
+
+// SVG -> PNG: load the SVG as an image, draw it on a canvas at 2x resolution and
+// export a PNG Blob (the saved figure uses fixed fonts and colours, so it renders on its own).
+function svgToPNG(svg) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    img.onload = () => {
+      const scale = 2, cv = document.createElement("canvas");
+      cv.width = img.width * scale; cv.height = img.height * scale;
+      const ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url); cv.toBlob(b => b ? res(b) : rej(new Error("PNG encoding failed")), "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Could not render the figure")); };
+    img.src = url;
+  });
+}
+
+/* ---------------- Event handlers (which control runs which function) ---------------- */
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { current = b.dataset.tab; render(); }));
+$("btn-run").addEventListener("click", run);
+$("btn-example").addEventListener("click", () => { els.data.value = EXAMPLE_DATA; els.title.value = "Example"; setStatus("Example data loaded."); });
+$("btn-clear").addEventListener("click", clearAll);
+$("btn-csv").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => loadCSVText(String(rd.result), f.name);
+  rd.onerror = () => setStatus("Load failed: could not read the file.", true);
+  rd.readAsText(f); e.target.value = "";
+});
+els.useRange.addEventListener("change", toggleStates);
+els.base.addEventListener("change", toggleStates);
+els.tab.addEventListener("change", () => { if (current === "report") render(); });
+// Toggling the Arrhenius regression line only redraws the current plot.
+els.showArr.addEventListener("change", () => { if (result && current === "arrhenius") render(); });
+els.title.addEventListener("input", () => { if (result && current !== "report") render(); });
+// Ctrl+Enter (Cmd+Enter on Mac) runs the calculation.
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); } });
+
+// Save buttons.
+$("save-svg").addEventListener("click", () => result && save(fileBase() + "_q10_plots.svg", combinedSVG(result, els.title.value.trim(), els.showArr.checked)));
+$("save-png").addEventListener("click", async () => {
+  if (!result) return;
+  try { save(fileBase() + "_q10_plots.png", await svgToPNG(combinedSVG(result, els.title.value.trim(), els.showArr.checked))); }
+  catch (e) { setStatus(e.message, true); }
+});
+$("save-txt").addEventListener("click", () => result && save(fileBase() + "_q10_results.txt", reportText(result, els.tab.checked) + "\n"));
+
+/* ---------------- "How it works" dialog ---------------- */
+// Uses the native <dialog> element: showModal() traps focus inside it and closes on Esc.
+// A click on the backdrop lands on the <dialog> element itself (not its content), which closes it.
+// Focus returns to the "How it works" button when the dialog closes.
+const help = $("help");
+$("btn-help").addEventListener("click", () => { help.showModal(); help.scrollTop = 0; });
+$("help-close").addEventListener("click", () => help.close());
+help.addEventListener("click", e => { if (e.target === help) help.close(); });
+help.addEventListener("close", () => $("btn-help").focus());
+
+/* ---------------- Start-up ---------------- */
+toggleStates(); updateReadout(); render();
+
+// Open with the example already calculated
+els.data.value = EXAMPLE_DATA; els.title.value = "Example";
+run();
+$("demo").hidden = false;
+setStatus("Showing the demo calculation. Click Clear to start with your own data.");
+els.data.addEventListener("input", hideDemo, { once: true });
+$("file").addEventListener("change", hideDemo);
+
+</script>
+</body>
+</html>
