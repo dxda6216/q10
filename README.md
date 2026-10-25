@@ -11,6 +11,12 @@ A small tool that estimates the temperature coefficient **Q<sub>10</sub>** of a 
 
 to your data and shows the result as Period, Frequency and Arrhenius plots. It also reports an Arrhenius regression line and the activation energy E<sub>a</sub>.
 
+<p align="center">
+<picture>
+<img src="https://raw.githubusercontent.com/dxda6216/q10/refs/heads/main/images/q10_calculator_python_desktop_app_screenshot.png" alt="Q10 calculator desktop app screenshot" width="550">
+</picture>
+</p>
+
 The same calculator comes in three versions. They use the same model, the same fitting method and the same inputs, and give the same numbers.
 
 | | Browser (HTML) | Desktop (Python) | Google Colab |
