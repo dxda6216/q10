@@ -939,11 +939,17 @@ class Q10App(tk.Tk):
         ]
         for i, lab in enumerate(self.notice_labels):
             lab.pack(side=tk.TOP, fill=tk.X, pady=(0 if i == 0 else 6, 0))
-        link = tk.Label(self.notice, text=HTML_URL + '   (use the "Download raw file" button)',
-                        bg="#EEF2FB", fg="#2F4FB5", cursor="hand2", anchor="w",
-                        font=("TkDefaultFont", 9, "underline"))
-        link.pack(side=tk.TOP, fill=tk.X)
+        # Link row: only the URL is clickable/underlined; the hint after it is plain text.
+        link_row = tk.Frame(self.notice, bg="#EEF2FB")
+        link_row.pack(side=tk.TOP, fill=tk.X)
+        # padx=0 / bd=0 remove the labels' own padding, so the gap is just the one space
+        # at the start of the hint text.
+        link = tk.Label(link_row, text=HTML_URL, bg="#EEF2FB", fg="#2F4FB5", cursor="hand2",
+                        font=("TkDefaultFont", 9, "underline"), padx=0, bd=0)
+        link.pack(side=tk.LEFT)
         link.bind("<Button-1>", lambda e: open_url(HTML_URL))
+        tk.Label(link_row, text=' (use the "Download raw file" button)', bg="#EEF2FB",
+                 fg="#4B5563", font=("TkDefaultFont", 9), padx=0, bd=0).pack(side=tk.LEFT)
         # Re-wrap the notice text whenever its width changes.
         self.notice.bind("<Configure>", lambda e: [lab.configure(wraplength=max(200, e.width - 30))
                                                    for lab in self.notice_labels])
