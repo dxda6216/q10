@@ -42,6 +42,8 @@ The same calculator comes in three versions. They use the same model, the same f
 - [Privacy and data handling](#privacy-and-data-handling)
 - [Version-specific instructions](#version-specific-instructions)
 - [Differences between the versions](#differences-between-the-versions)
+- [Use of AI](#use-of-ai)
+- [License](#license)
 
 ---
 
@@ -420,3 +422,7 @@ I wrote the core code for Q<sub>10</sub> calculation and graph generation in Pyt
 > I can’t give an absolute guarantee: my writing comes from patterns learned in training, and very common code idioms can resemble existing code. But nothing here was taken from a specific source, and the code consists of standard techniques written for your files.
 > 
 > If you publish the repository, it’s worth adding a LICENSE file (for example MIT or BSD-3) so others know how they may use your code. I’m not a lawyer, so for formal licensing questions it’s best to consult one.
+
+## License
+
+The Q10 calculator is released under the MIT License. The licence text is in the file [`LICENSE`](https://github.com/dxda6216/q10/LICENSE) in the repository [`github.com/dxda6216/q10`](https://github.com/dxda6216/q10/).
