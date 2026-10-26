@@ -425,4 +425,4 @@ I wrote the core code for Q<sub>10</sub> calculation and graph generation in Pyt
 
 ## License
 
-The Q10 calculator is released under the MIT License. The licence text is in the file [`LICENSE`](https://github.com/dxda6216/q10/LICENSE) in the repository [`github.com/dxda6216/q10`](https://github.com/dxda6216/q10/).
+The Q10 calculator is released under the MIT License. The licence text is in the file [`LICENSE`](https://github.com/dxda6216/q10/blob/main/LICENSE) in the repository [`github.com/dxda6216/q10`](https://github.com/dxda6216/q10/).
