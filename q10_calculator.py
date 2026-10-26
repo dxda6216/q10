@@ -769,7 +769,8 @@ HELP_CONTENT = [
          "or semicolons. Or use ", ("b", "Load CSV..."), " with temperature in column 1 and period in "
          "column 2. A header line and lines starting with # are skipped."],
         ["To fit only part of the data, tick ", ("b", "Use only data within a temperature range"),
-         " and set Low and High (both ends included). Or, after calculating, simply drag across "
+         " and set Low and High (both ends included); after a first calculation the results "
+         "update as soon as you change them. Or, after calculating, simply drag across "
          "any plot: the range you select is filled in and the fit is recalculated at once. The "
          "current range is shaded on the plots, and the axis scales stay the same as with all "
          "data. Double-click a plot or click ", ("b", "Use all data"), " to go back to all data. "
@@ -944,6 +945,13 @@ class Q10App(tk.Tk):
         self._build_output()
         self._toggle_states()
 
+        # Live update of the fit range (see _range_changed): any edit of Low/High,
+        # typed or with the spinbox arrows, schedules a recalculation.
+        self._range_job = None
+        self._suppress_range = False
+        for var in (self.var_low, self.var_high):
+            var.trace_add("write", lambda *a: self._range_changed(self.RANGE_DELAY_MS))
+
         self.bind("<Control-Return>", lambda e: self.run())
 
         # Start-up: open with the example already calculated and show the notice.
@@ -1032,14 +1040,18 @@ class Q10App(tk.Tk):
         f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=6)
         f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(f, text="Use only data within a temperature range",
-                        variable=self.var_range, command=self._toggle_states).pack(anchor="w")
+                        variable=self.var_range, command=lambda: self._range_changed(0)).pack(anchor="w")
         row = ttk.Frame(f)
         row.pack(fill=tk.X, pady=(4, 0))
         ttk.Label(row, text="Low").pack(side=tk.LEFT)
         self.sp_low = ttk.Spinbox(row, from_=-50, to=150, increment=0.1, width=8, textvariable=self.var_low)
+        for ev in ("<Return>", "<FocusOut>"):
+            self.sp_low.bind(ev, lambda e: self._range_changed(0))
         self.sp_low.pack(side=tk.LEFT, padx=(4, 12))
         ttk.Label(row, text="High").pack(side=tk.LEFT)
         self.sp_high = ttk.Spinbox(row, from_=-50, to=150, increment=0.1, width=8, textvariable=self.var_high)
+        for ev in ("<Return>", "<FocusOut>"):
+            self.sp_high.bind(ev, lambda e: self._range_changed(0))
         self.sp_high.pack(side=tk.LEFT, padx=4)
         ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
         ttk.Button(row, text="Use all data", command=self.use_all_data).pack(side=tk.RIGHT)
@@ -1216,11 +1228,12 @@ class Q10App(tk.Tk):
         self.status.set(f"Loaded {len(temps)} rows from {path.split('/')[-1]}")
 
     # ---- actions -----------------------------------------------------
-    def run(self, select_tab=True):
+    def run(self, select_tab=True, quiet=False):
         """Calculate: read inputs -> analyze() -> redraw plots and Results.
 
         Returns True on success. select_tab=False keeps the current tab (used when the
-        range is chosen by dragging on a plot)."""
+        range is chosen by dragging on a plot or edited live). quiet=True reports an
+        error only in the status line, without a dialog (used for live range edits)."""
         try:
             temps, periods = parse_pairs(self.txt_data.get("1.0", tk.END))
             use_range = self.var_range.get()
@@ -1229,8 +1242,9 @@ class Q10App(tk.Tk):
             custom = float(self.var_custom.get()) if self.var_base.get() == CUSTOM_BASE else 0.0
             result = analyze(temps, periods, use_range, low, high, self.var_base.get(), custom)
         except (ValueError, RuntimeError) as exc:
-            messagebox.showerror("Cannot calculate", str(exc))
-            self.status.set("Error: " + str(exc))
+            if not quiet:
+                messagebox.showerror("Cannot calculate", str(exc))
+            self.status.set("Cannot calculate: " + str(exc))
             return False
 
         self.result = result
@@ -1298,18 +1312,51 @@ class Q10App(tk.Tk):
         # Defer: redrawing the figure inside the selector's own callback is unsafe.
         self.after_idle(lambda: self._apply_range(lo, hi))
 
+    def _set_range_vars(self, on, low, high):
+        """Set the range controls from code without triggering the live update."""
+        self._suppress_range = True
+        try:
+            self.var_range.set(on)
+            self.var_low.set(low)
+            self.var_high.set(high)
+        finally:
+            self._suppress_range = False
+        self._toggle_states()
+
     def _apply_range(self, lo, hi):
         """Set the fit range to [lo, hi] and recalculate; restore the previous settings if it fails."""
         prev = (self.var_range.get(), self.var_low.get(), self.var_high.get())
-        self.var_range.set(True)
-        self.var_low.set(f"{lo:.1f}")
-        self.var_high.set(f"{hi:.1f}")
-        self._toggle_states()
+        self._set_range_vars(True, f"{lo:.1f}", f"{hi:.1f}")
         if not self.run(select_tab=False):
-            self.var_range.set(prev[0])
-            self.var_low.set(prev[1])
-            self.var_high.set(prev[2])
-            self._toggle_states()
+            self._set_range_vars(*prev)
+
+    # ---- live update of the fit range ---------------------------------
+    # After a first calculation, ticking/unticking the range box or editing Low/High
+    # recalculates at once. While typing (or holding a spinbox arrow), the recalculation
+    # waits until the changes pause for RANGE_DELAY_MS, so intermediate values such as
+    # "3" on the way to "38" are not used; Enter or leaving the field applies it
+    # immediately. An empty field is treated as unfinished and ignored. If the range
+    # cannot be used, the error is shown in the status line (no dialog) and the previous
+    # result stays until the values are corrected. The current tab is kept.
+    RANGE_DELAY_MS = 500
+
+    def _range_changed(self, delay=0):
+        if self._suppress_range:
+            return
+        self._toggle_states()
+        if self._range_job is not None:
+            self.after_cancel(self._range_job)
+            self._range_job = None
+        if self.result is None:
+            return  # nothing calculated yet (or cleared): wait for Calculate
+        self._range_job = self.after(delay, self._range_apply)
+
+    def _range_apply(self):
+        self._range_job = None
+        if self.var_range.get() and (not str(self.var_low.get()).strip()
+                                     or not str(self.var_high.get()).strip()):
+            return
+        self.run(select_tab=False, quiet=True)
 
     # ---- manual axis scales -------------------------------------------
     # Each axis is automatic unless its box is ticked. read_axes() validates the fields
