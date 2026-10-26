@@ -454,7 +454,7 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
     <ol>
       <li>The page opens with a demo calculation of example data. Click <strong>Clear</strong> to start with your own.</li>
       <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
-      <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included). Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
+      <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included); after a first calculation the results update as soon as you change them. Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
       <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
       <li>The axis scales are set automatically. To set them yourself, tick <strong>Set temperature axis</strong> and/or <strong>Set period axis</strong> under <strong>Axis scales</strong> and enter Min and Max (temperature 0–100 °C, period 0–180 h). The frequency and Arrhenius axes are converted from these ranges. The plots and saved figures update at once; untick to return to automatic scaling.</li>
       <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
@@ -1086,7 +1086,7 @@ function updateReadout() {
 // "Calculate": read the inputs -> analyze() -> update the display on success.
 // On failure, "result" is left unchanged and only an error message is shown.
 // Returns true on success (used by drag-to-select to undo a failed range).
-function run() {
+function run(keepTab = false) {
   try {
     const [t, p] = parsePairs(els.data.value);
     const useRange = els.useRange.checked;
@@ -1098,7 +1098,7 @@ function run() {
   setStatus(lastOkStatus);
   const axErr = readAxes().error;
   if (axErr) setStatus(axErr, true);
-  if (current === "report") current = "period";
+  if (!keepTab && current === "report") current = "period";
   updateReadout(); render();
   return true;
 }
@@ -1216,7 +1216,28 @@ $("file").addEventListener("change", e => {
   rd.onerror = () => setStatus("Load failed: could not read the file.", true);
   rd.readAsText(f); e.target.value = "";
 });
-els.useRange.addEventListener("change", toggleStates);
+/* Live update of the fit range: after a first calculation, ticking/unticking the range
+   box or editing Low/High recalculates at once. While typing, the recalculation waits
+   until typing pauses (RANGE_DELAY_MS) so intermediate values such as "3" on the way to
+   "38" are not used; Enter or leaving the field applies it immediately. An empty field
+   is treated as unfinished and ignored. If the range cannot be used, the error is shown
+   and the previous result stays until the values are corrected. The current tab is kept. */
+const RANGE_DELAY_MS = 500;
+let rangeTimer = null;
+function rangeChanged(delay) {
+  toggleStates();
+  clearTimeout(rangeTimer);
+  if (!result) return;  // nothing calculated yet (or cleared): wait for Calculate
+  rangeTimer = setTimeout(() => {
+    if (els.useRange.checked && (els.low.value.trim() === "" || els.high.value.trim() === "")) return;
+    run(true);
+  }, delay);
+}
+els.useRange.addEventListener("change", () => rangeChanged(0));
+[els.low, els.high].forEach(el => {
+  el.addEventListener("input", () => rangeChanged(RANGE_DELAY_MS));
+  el.addEventListener("change", () => rangeChanged(0));
+});
 els.base.addEventListener("change", toggleStates);
 els.tab.addEventListener("change", () => { if (current === "report") render(); });
 // Toggling the Arrhenius regression line only redraws the current plot.
