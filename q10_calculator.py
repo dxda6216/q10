@@ -105,7 +105,9 @@
        used in the calculation. After a calculation, the range can also be
        chosen by dragging across any plot; the fit is recalculated on release.
        Double-click a plot or click "Use all data" to return to all data.
-       The axis scales of the plots always match the all-data fit.
+       The axis scales of the plots always match the all-data fit, unless
+       they are set manually under "Axis scales" (temperature 0-100 °C,
+       period 0-180 h; frequency and Arrhenius axes are converted).
     5) Choose the base temperature. Minimum / Maximum / Average / Median are
        computed from the data used in the fit.
     6) Click "Calculate" (or press Ctrl+Enter).
@@ -562,6 +564,38 @@ FROM_X = {"Period": lambda v: v, "Frequency": lambda v: v,
           "Arrhenius": lambda v: 1000.0 / v - 273.15}
 
 
+# Manual axis scales -------------------------------------------------------------
+# axes = {"t": (Tmin, Tmax) or None, "p": (Pmin, Pmax) or None}; allowed ranges below.
+#   t -> x of Period/Frequency; x = 1000/(T + 273.15) of the Arrhenius plot
+#   p -> y of Period; y = 24/P (Frequency) and ln(24/P) (Arrhenius), so Pmax gives
+#        the lower limit there. Pmin = 0 would be infinite, so the upper limit then
+#        stays automatic.
+# Manual limits are used exactly (no padding); anything outside is clipped by the axes.
+AXIS_RANGE = {"t": (0.0, 100.0), "p": (0.0, 180.0)}  # °C, hours
+
+
+def apply_axes(ax, name, axes):
+    """Replace the automatic limits of one plot by the manual ranges that are set."""
+    if not axes:
+        return
+    if axes.get("t"):
+        a, b = axes["t"]
+        if name == "Arrhenius":
+            ax.set_xlim(1000.0 / (b + 273.15), 1000.0 / (a + 273.15))
+        else:
+            ax.set_xlim(a, b)
+    if axes.get("p"):
+        a, b = axes["p"]
+        if name == "Period":
+            ax.set_ylim(a, b)
+        else:
+            f = (lambda v: 24.0 / v) if name == "Frequency" else (lambda v: math.log(24.0 / v))
+            lo = f(b)
+            hi = f(a) if a > 0 else ax.get_ylim()[1]
+            if hi > lo:
+                ax.set_ylim(lo, hi)
+
+
 def _estimate_lines(text, size_pt, width_in):
     """Rough count of rendered lines for wrapped text."""
     usable = width_in * 72 * 0.95
@@ -603,14 +637,16 @@ def apply_header(fig):
     fig.tight_layout(rect=[0, 0, 1, max(0.3, 1 - y_in / h)])
 
 
-def render_single(fig, drawer, r, title, show_arr=False, name=None):
+def render_single(fig, drawer, r, title, show_arr=False, name=None, axes=None):
     """Draw one plot (for a tab) with the title and fit summary; return its Axes.
 
     With name (the plot's DRAWERS name) and a fit range set, the range is shaded
-    (on screen only; the saved figure has no band)."""
+    (on screen only; the saved figure has no band). axes: manual axis ranges."""
     fig.clear()
     ax = fig.add_subplot(111)
     drawer(ax, r, show_arr)
+    if name:
+        apply_axes(ax, name, axes)
     if name and r["use_range"]:
         ax.axvspan(TO_X[name](r["low"]), TO_X[name](r["high"]), color="blue", alpha=0.07, lw=0, zorder=0)
     fig._q10_header = (title, summary_line(r), TITLE_SIZE, 9)
@@ -628,12 +664,13 @@ def make_span_selector(ax, onselect, onmove):
         return SpanSelector(ax, onselect, "horizontal", rectprops=style, **kw)
 
 
-def render_combined(fig, r, title, show_arr=False):
+def render_combined(fig, r, title, show_arr=False, axes=None):
     """Figure for saving: title, summary, then the three plots stacked vertically."""
     fig.clear()
-    for i, (_, drawer) in enumerate(DRAWERS, start=1):
+    for i, (name, drawer) in enumerate(DRAWERS, start=1):
         ax = fig.add_subplot(3, 1, i)
         drawer(ax, r, show_arr)
+        apply_axes(ax, name, axes)
         ax.set_box_aspect(3 / 4)
     fig._q10_header = (title, summary_line(r), TITLE_SIZE_COMBINED, 10)
     apply_header(fig)
@@ -739,6 +776,11 @@ HELP_CONTENT = [
          "While the toolbar’s zoom or pan mode is on, dragging zooms or pans instead."],
         ["Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data "
          "used in the fit."],
+        ["The axis scales are set automatically. To set them yourself, tick ", ("b", "Temperature"),
+         " and/or ", ("b", "Period"), " under ", ("b", "Axis scales"), " and enter Min and Max "
+         "(temperature 0–100 °C, period 0–180 h); press Enter or move to another field to apply. "
+         "The frequency and Arrhenius axes are converted from these ranges. The plots and saved "
+         "figures update at once; untick to return to automatic scaling."],
         ["Click ", ("b", "Calculate"), ", or press Ctrl+Enter."],
         ["Switch between the Results, Period, Frequency and Arrhenius tabs. Each plot tab has a "
          "toolbar to zoom, pan and save that single plot."],
@@ -891,6 +933,11 @@ class Q10App(tk.Tk):
         self.var_custom = tk.StringVar(value="37")
         self.var_tab = tk.BooleanVar(value=False)
         self.var_arr = tk.BooleanVar(value=True)   # show the Arrhenius regression line
+        # Manual axis scales (unticked = automatic)
+        self.var_axt, self.var_axp = tk.BooleanVar(value=False), tk.BooleanVar(value=False)
+        self.var_tmin, self.var_tmax = tk.StringVar(value=""), tk.StringVar(value="")
+        self.var_pmin, self.var_pmax = tk.StringVar(value=""), tk.StringVar(value="")
+        self.last_ok = ""
         self.var_title = tk.StringVar()
 
         self._build_controls()
@@ -941,6 +988,33 @@ class Q10App(tk.Tk):
         ttk.Checkbutton(left, text="Show Arrhenius regression line on the Arrhenius plot",
                         variable=self.var_arr, command=self._redraw_arrhenius
                         ).pack(side=tk.BOTTOM, anchor="w", pady=(0, 2))
+
+        # Manual axis scales: only redraw the plots; nothing is recalculated.
+        f = ttk.LabelFrame(left, text="Axis scales", padding=6)
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
+        self.ax_spins = {}
+        for key, label, unit, v_on, v_min, v_max in (
+                ("t", "Temperature", f"{DEG}C", self.var_axt, self.var_tmin, self.var_tmax),
+                ("p", "Period", "h", self.var_axp, self.var_pmin, self.var_pmax)):
+            lo, hi = AXIS_RANGE[key]
+            row = ttk.Frame(f)
+            row.pack(fill=tk.X, pady=(0, 3))
+            ttk.Checkbutton(row, text=label, width=12, variable=v_on,
+                            command=lambda k=key: self._axis_ticked(k)).pack(side=tk.LEFT)
+            spins = []
+            for var, txt in ((v_min, "Min"), (v_max, "Max")):
+                ttk.Label(row, text=txt).pack(side=tk.LEFT, padx=(4, 2))
+                sp = ttk.Spinbox(row, from_=lo, to=hi, increment=0.1, width=6, textvariable=var,
+                                 command=self._axes_changed)
+                sp.pack(side=tk.LEFT)
+                sp.bind("<Return>", lambda e: self._axes_changed())
+                sp.bind("<FocusOut>", lambda e: self._axes_changed())
+                spins.append(sp)
+            ttk.Label(row, text=unit).pack(side=tk.LEFT, padx=(3, 0))
+            self.ax_spins[key] = spins
+        ttk.Label(f, text=f"Unticked axes are automatic. Temperature 0-100 {DEG}C, period 0-180 h; "
+                          "frequency and Arrhenius axes are converted.",
+                  foreground="#555", wraplength=320, justify="left").pack(anchor="w")
 
         f = ttk.LabelFrame(left, text="Base temperature", padding=6)
         f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
@@ -1063,6 +1137,9 @@ class Q10App(tk.Tk):
         self.sp_low.configure(state=rng)
         self.sp_high.configure(state=rng)
         self.sp_custom.configure(state="normal" if self.var_base.get() == CUSTOM_BASE else "disabled")
+        for key, on in (("t", self.var_axt), ("p", self.var_axp)):
+            for sp in getattr(self, "ax_spins", {}).get(key, []):
+                sp.configure(state="normal" if on.get() else "disabled")
 
     # ---- start-up notice and help -----------------------------------
     def _show_notice(self):
@@ -1166,7 +1243,11 @@ class Q10App(tk.Tk):
                f"R\u00B2 = {result['r2']:.4f}")
         if result["use_range"]:
             msg += f"  (fit range {result['low']:g}–{result['high']:g} {DEG}C, {len(result['xa'])} points)"
+        self.last_ok = msg
         self.status.set(msg)
+        err = self.read_axes()[1]
+        if err:
+            self.status.set(err)
         if select_tab:
             self.nb.select(1)
         return True
@@ -1175,7 +1256,7 @@ class Q10App(tk.Tk):
         """Draw plot tab i (with the range band) and attach a fresh drag selector."""
         name, drawer = DRAWERS[i]
         ax = render_single(self.figs[i], drawer, self.result, self.var_title.get().strip(),
-                           self.var_arr.get(), name=name)
+                           self.var_arr.get(), name=name, axes=self.read_axes()[0])
         self.canvases[i].draw()
         self.selectors[i] = make_span_selector(
             ax, lambda a, b, n=name, ax=ax: self._on_span(n, ax, a, b),
@@ -1230,6 +1311,59 @@ class Q10App(tk.Tk):
             self.var_high.set(prev[2])
             self._toggle_states()
 
+    # ---- manual axis scales -------------------------------------------
+    # Each axis is automatic unless its box is ticked. read_axes() validates the fields
+    # (both values given, Min < Max, temperature 0-100 °C, period 0-180 h); an invalid
+    # axis falls back to automatic and its problem is shown in the status line.
+    # Ticking a box with empty fields fills them with the Period plot's automatic
+    # limits. Changes only redraw the plots (and apply to saved figures).
+    def read_axes(self):
+        axes, errors = {"t": None, "p": None}, []
+        for key, name, unit, on, vmin, vmax in (
+                ("t", "Temperature", f"{DEG}C", self.var_axt, self.var_tmin, self.var_tmax),
+                ("p", "Period", "h", self.var_axp, self.var_pmin, self.var_pmax)):
+            if not on.get():
+                continue
+            lo, hi = AXIS_RANGE[key]
+            try:
+                a, b = float(vmin.get()), float(vmax.get())
+            except ValueError:
+                errors.append(f"{name} axis: enter Min and Max.")
+                continue
+            if a < lo or b > hi:
+                errors.append(f"{name} axis: values must be between {lo:g} and {hi:g} {unit}.")
+            elif not a < b:
+                errors.append(f"{name} axis: Min must be smaller than Max.")
+            else:
+                axes[key] = (a, b)
+        err = " ".join(errors) + (" Using automatic scaling for that axis." if errors else "")
+        return axes, err
+
+    def _axis_ticked(self, key):
+        """Prefill empty Min/Max of a just-ticked axis, then redraw."""
+        on, vmin, vmax = ((self.var_axt, self.var_tmin, self.var_tmax) if key == "t"
+                          else (self.var_axp, self.var_pmin, self.var_pmax))
+        if on.get() and self.result is not None and not vmin.get().strip() and not vmax.get().strip():
+            fig = Figure()
+            ax = fig.add_subplot(111)
+            draw_period(ax, self.result, False)
+            a, b = ax.get_xlim() if key == "t" else ax.get_ylim()
+            lo, hi = AXIS_RANGE[key]
+            vmin.set(f"{max(lo, math.floor(a * 10) / 10):.1f}")
+            vmax.set(f"{min(hi, math.ceil(b * 10) / 10):.1f}")
+        self._axes_changed()
+
+    def _axes_changed(self):
+        self._toggle_states()
+        err = self.read_axes()[1]
+        if err:
+            self.status.set(err)
+        elif self.result is not None:
+            self.status.set(self.last_ok)
+        if self.result is not None:
+            for i in range(len(DRAWERS)):
+                self._render_plot(i)
+
     def _on_plot_press(self, event):
         """Double-click inside a plot -> use all data (ignored while zoom/pan is active)."""
         if event.dblclick and event.inaxes is not None and not event.canvas.widgetlock.locked():
@@ -1259,7 +1393,8 @@ class Q10App(tk.Tk):
         if not path:
             return
         fig = Figure(figsize=(8, 18), dpi=150)
-        render_combined(fig, self.result, self.var_title.get().strip(), self.var_arr.get())
+        render_combined(fig, self.result, self.var_title.get().strip(), self.var_arr.get(),
+                        axes=self.read_axes()[0])
         fig.savefig(path)
         self.status.set(f"Saved {path}")
 

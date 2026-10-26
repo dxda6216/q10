@@ -107,6 +107,9 @@
        chosen by dragging across any plot (see attachRangeDrag); the range is
        filled in and the fit recalculated on release. Double-click a plot or
        click "Use all data" to return to all data.
+    5b) Axis scales are automatic (those of the all-data fit). Under "Axis scales",
+       the temperature axis (0-100 °C) and the period axis (0-180 h) can be set
+       manually; frequency and Arrhenius axes are converted from them.
     5) Choose the base temperature. Minimum / Maximum / Average / Median are
        computed from the data used in the fit.
     6) Click "Calculate" (or press Ctrl+Enter / Cmd+Enter).
@@ -333,6 +336,22 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       </div>
     </fieldset>
 
+    <!-- Manual axis scales (only redraw; nothing is recalculated). Unticked = automatic. -->
+    <fieldset>
+      <legend>Axis scales</legend>
+      <p class="hint">Unticked axes are scaled automatically. The frequency and Arrhenius axes are converted from these ranges.</p>
+      <label class="check"><input type="checkbox" id="ax-t" autocomplete="off"> Set temperature axis</label>
+      <div class="row" style="margin-top:6px">
+        <label for="ax-tmin">Min</label><input id="ax-tmin" autocomplete="off" type="number" min="0" max="100" step="0.1">
+        <label for="ax-tmax">Max</label><input id="ax-tmax" autocomplete="off" type="number" min="0" max="100" step="0.1"><span>°C</span>
+      </div>
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="ax-p" autocomplete="off"> Set period axis</label>
+      <div class="row" style="margin-top:6px">
+        <label for="ax-pmin">Min</label><input id="ax-pmin" autocomplete="off" type="number" min="0" max="180" step="0.1">
+        <label for="ax-pmax">Max</label><input id="ax-pmax" autocomplete="off" type="number" min="0" max="180" step="0.1"><span>h</span>
+      </div>
+    </fieldset>
+
     <fieldset>
       <!-- Arrhenius regression line on/off (only redraws; nothing is recalculated). -->
       <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line on the Arrhenius plot</label>
@@ -437,6 +456,7 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
       <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included). Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
       <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
+      <li>The axis scales are set automatically. To set them yourself, tick <strong>Set temperature axis</strong> and/or <strong>Set period axis</strong> under <strong>Axis scales</strong> and enter Min and Max (temperature 0–100 °C, period 0–180 h). The frequency and Arrhenius axes are converted from these ranges. The plots and saved figures update at once; untick to return to automatic scaling.</li>
       <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
       <li>Switch between the Period, Frequency, Arrhenius and Report tabs.</li>
       <li><strong>Save figure</strong> saves all three plots stacked in one PNG or SVG image. <strong>Save report</strong> saves the results as a text file; tick <strong>Also show tab-delimited data</strong> to include data you can paste into a spreadsheet.</li>
@@ -803,22 +823,59 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
      showArr    : on the Arrhenius plot, also draw the Arrhenius regression
                   line (solid) over the same temperature span as the Q10 curve
    --------------------------------------------------------------------- */
-function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = false, showArr = false) {
+/* ---------------------------------------------------------------------
+   Axis limits
+   autoLimits(): the automatic limits - all data points and the all-data reference
+   curves (r.ref), plus 5 % padding; unchanged when a fit range is set.
+   applyAxes(): replaces them with manual ranges where given:
+     axes.t = [Tmin, Tmax] in °C   -> x of Period/Frequency; x = 1000/(T + 273.15)
+                                      of the Arrhenius plot (high T on the left)
+     axes.p = [Pmin, Pmax] in h    -> y of Period; y = 24/P (Frequency) and
+                                      ln(24/P) (Arrhenius), so Pmax gives the lower
+                                      limit there. Pmin = 0 would be infinite, so the
+                                      upper limit then stays automatic.
+   Manual limits are used exactly (no padding); anything outside is clipped.
+   --------------------------------------------------------------------- */
+const AXIS_RANGE = { t: [0, 100], p: [0, 180] };  // allowed manual ranges (°C, h)
+function autoLimits(kind, r, showArr) {
+  const P = PLOTS[kind];
+  const pts = r.x.map((t, i) => [P.tx(t), P.ty(r.y[i])]);
+  const refFit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.ref.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+  const refArr = showArr && kind === "arrhenius"
+    ? r.fcx.map(t => [P.tx(t), r.ref.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
+  const all = [...pts, ...refFit, ...refArr];
+  let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0]));
+  let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
+  const px = (x1 - x0 || 1) * 0.05, py = (y1 - y0 || 1) * 0.05;
+  return [x0 - px, x1 + px, y0 - py, y1 + py];
+}
+function applyAxes(kind, [x0, x1, y0, y1], axes) {
+  if (axes && axes.t) {
+    const [a, b] = axes.t;
+    if (kind === "arrhenius") { x0 = 1000 / (b + 273.15); x1 = 1000 / (a + 273.15); } else { x0 = a; x1 = b; }
+  }
+  if (axes && axes.p) {
+    const [a, b] = axes.p;
+    if (kind === "period") { y0 = a; y1 = b; }
+    else {
+      const f = kind === "frequency" ? v => 24 / v : v => Math.log(24 / v);
+      const lo = f(b), hi = a > 0 ? f(a) : y1;
+      if (hi > lo) { y0 = lo; y1 = hi; }
+    }
+  }
+  return [x0, x1, y0, y1];
+}
+
+function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = false, showArr = false, axes = null) {
   const P = PLOTS[kind], m = { l: 70, r: 18, t: 38, b: 56 };
   const pts = r.x.map((t, i) => [P.tx(t), P.ty(r.y[i])]);
   const used = r.xa.map((t, i) => [P.tx(t), P.ty(r.ya[i])]);
   const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
   const arrOn = showArr && kind === "arrhenius";
   const arrLine = arrOn ? r.fcx.map(t => [P.tx(t), r.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
-  // Axis limits come from all data points and the ALL-DATA reference curves (r.ref), so the
-  // scales stay the same when a fit range is chosen. Curves of a range fit that run past
-  // these limits are clipped to the plot area.
-  const refFit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.ref.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
-  const refArr = arrOn ? r.fcx.map(t => [P.tx(t), r.ref.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
-  const all = [...pts, ...refFit, ...refArr];
-  let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0]));
-  let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
-  const px = (x1 - x0 || 1) * 0.05, py = (y1 - y0 || 1) * 0.05; x0 -= px; x1 += px; y0 -= py; y1 += py;
+  // Axis limits: automatic (fixed for any fit range, see autoLimits), or manual where set.
+  // Points and curves outside the limits are clipped to the plot area.
+  const [x0, x1, y0, y1] = applyAxes(kind, autoLimits(kind, r, showArr), axes);
   const pw = W - m.l - m.r, ph = H - m.t - m.b;
   const sx = v => ox + m.l + (v - x0) / (x1 - x0) * pw, sy = v => oy + m.t + ph - (v - y0) / (y1 - y0) * ph;
   const xt = niceTicks(x0, x1), yt = niceTicks(y0, y1);
@@ -830,18 +887,20 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
   s += `<rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}" fill="none" stroke="${c.axis}"/>`;
   s += `<text x="${ox + m.l + pw / 2}" y="${oy + H - 12}" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.xl)}</text>`;
   s += `<text transform="translate(${ox + 18} ${oy + m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="13" fill="${c.ink}">${esc(P.yl)}</text>`;
+  const onScreen = c === SCREEN;
+  const clipId = `clip-${kind}-${Math.round(oy)}-${onScreen ? "s" : "p"}`;
+  s += `<clipPath id="${clipId}"><rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}"/></clipPath>`;
   // On screen only: shade the current fit range, and add the elements used for
   // drag-to-select (an invisible hit area and a hidden selection band).
-  const onScreen = c === SCREEN;
   if (onScreen && r.useRange) {
     const a = sx(P.tx(r.low)), b = sx(P.tx(r.high));
     const L = Math.max(ox + m.l, Math.min(a, b)), R = Math.min(ox + m.l + pw, Math.max(a, b));
     if (R > L) s += `<rect x="${L}" y="${oy + m.t}" width="${R - L}" height="${ph}" fill="${c.fit}" fill-opacity=".07"/>`;
   }
+  s += `<g clip-path="url(#${clipId})">`;  // data points (clipped when the axes are set manually)
   if (r.useRange) pts.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${c.excl}"/>`);
   used.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="${c.used}"/>`);
-  const clipId = `clip-${kind}-${Math.round(oy)}-${onScreen ? "s" : "p"}`;
-  s += `<clipPath id="${clipId}"><rect x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}"/></clipPath>`;
+  s += `</g>`;
   if (arrOn) s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.arr}" stroke-width="1.5" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   // legend in the emptiest corner
@@ -876,14 +935,14 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
 // Figure for saving: title and two summary lines, then the three plots stacked
 // vertically in one SVG (same layout as "Save figure" in the Python version). White background.
 // showArr adds the Arrhenius regression line to the Arrhenius plot.
-function combinedSVG(r, title, showArr = false) {
+function combinedSVG(r, title, showArr = false, axes = null) {
   const W = 800, PH = 560, c = PRINT;
   let y = 20, head = "";
   if (title) { head += `<text x="${W / 2}" y="${y + 20}" text-anchor="middle" font-size="22" font-weight="600" fill="${c.ink}">${esc(title)}</text>`; y += 42; }
   summaryLines(r).forEach(l => { head += `<text x="${W / 2}" y="${y + 14}" text-anchor="middle" font-size="14" fill="${c.ink}">${esc(l)}</text>`; y += 20; });
   y += 10;
   let body = "";
-  ["period", "frequency", "arrhenius"].forEach((k, i) => body += plotSVG(k, r, c, W, PH, 0, y + i * PH, false, showArr));
+  ["period", "frequency", "arrhenius"].forEach((k, i) => body += plotSVG(k, r, c, W, PH, 0, y + i * PH, false, showArr, axes));
   const H = y + 3 * PH + 10;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${c.font}"><rect width="100%" height="100%" fill="#fff"/>${head}${body}</svg>`;
 }
@@ -898,7 +957,8 @@ function combinedSVG(r, title, showArr = false) {
 
 // Short helper for getElementById, and references to frequently used elements.
 const $ = id => document.getElementById(id);
-const els = { data: $("data"), title: $("title"), useRange: $("use-range"), low: $("low"), high: $("high"), base: $("base"), custom: $("custom"), tab: $("tabdelim"), showArr: $("show-arr"), status: $("status"), view: $("view") };
+const els = { data: $("data"), title: $("title"), useRange: $("use-range"), low: $("low"), high: $("high"), base: $("base"), custom: $("custom"), tab: $("tabdelim"), showArr: $("show-arr"),
+  axT: $("ax-t"), axTmin: $("ax-tmin"), axTmax: $("ax-tmax"), axP: $("ax-p"), axPmin: $("ax-pmin"), axPmax: $("ax-pmax"), status: $("status"), view: $("view") };
 // Fill the base-temperature drop-down (default 37 °C).
 BASE_CHOICES.forEach(([v, label]) => els.base.add(new Option(label, v, v === "37", v === "37")));
 // result  : last successful analyze() result (null before calculating or after Clear)
@@ -909,6 +969,8 @@ let result = null, current = "period";
 function toggleStates() {
   els.low.disabled = els.high.disabled = !els.useRange.checked;
   els.custom.disabled = els.base.value !== "custom";
+  els.axTmin.disabled = els.axTmax.disabled = !els.axT.checked;
+  els.axPmin.disabled = els.axPmax.disabled = !els.axP.checked;
 }
 // Show a message in the status line; err=true shows it as an error (also announced to screen readers).
 function setStatus(msg, err = false) { els.status.textContent = msg; els.status.classList.toggle("error", err); els.status.setAttribute("role", err ? "alert" : "status"); }
@@ -925,7 +987,7 @@ function render() {
   }
   if (current === "report") { els.view.innerHTML = `<pre class="report"></pre>`; els.view.firstChild.textContent = reportText(result, els.tab.checked); return; }
   const t = els.title.value.trim(), [l1, l2] = summaryLines(result);
-  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked)}</div>`
+  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked, readAxes().axes)}</div>`
     + `<div class="plot-hint"><span class="hint-text">Drag across the plot to fit only that temperature range. Double-click to use all data.</span>`
     + `<button type="button" class="use-all"${result.useRange ? "" : " disabled"}>Use all data</button></div>`;
   if (t) els.view.querySelector(".figtitle").textContent = t;
@@ -1031,8 +1093,11 @@ function run() {
     result = analyze(t, p, useRange, parseFloat(els.low.value), parseFloat(els.high.value), els.base.value, parseFloat(els.custom.value));
   } catch (e) { setStatus("Cannot calculate: " + e.message, true); return false; }
   const [tau, q10] = result.popt;
-  setStatus(`Q10 = ${f3(q10)}, τ = ${f3(tau)} h at ${result.base.toFixed(2)}${DEG}C, R² = ${result.r2.toFixed(4)}`
-            + (result.useRange ? ` (fit range ${result.low}–${result.high} ${DEG}C, ${result.xa.length} points)` : ""));
+  lastOkStatus = `Q10 = ${f3(q10)}, τ = ${f3(tau)} h at ${result.base.toFixed(2)}${DEG}C, R² = ${result.r2.toFixed(4)}`
+            + (result.useRange ? ` (fit range ${result.low}–${result.high} ${DEG}C, ${result.xa.length} points)` : "");
+  setStatus(lastOkStatus);
+  const axErr = readAxes().error;
+  if (axErr) setStatus(axErr, true);
   if (current === "report") current = "period";
   updateReadout(); render();
   return true;
@@ -1091,6 +1156,53 @@ function svgToPNG(svg) {
   });
 }
 
+/* ---------------- Manual axis scales ----------------
+   Each axis is automatic unless its box is ticked. readAxes() validates the fields
+   (both values given, Min < Max, temperature 0-100 °C, period 0-180 h) and returns
+   { axes: {t, p}, error }: an invalid axis falls back to automatic and its problem is
+   reported. Ticking a box for the first time fills Min/Max with the current automatic
+   limits of the Period plot, so they can be adjusted from there. Changing the axes only
+   redraws the plots (and applies to saved figures); nothing is recalculated. */
+let lastOkStatus = "";
+function readAxes() {
+  const out = { axes: { t: null, p: null }, error: "" };
+  const one = (on, minEl, maxEl, key, name, unit) => {
+    if (!on.checked) return;
+    const a = parseFloat(minEl.value), b = parseFloat(maxEl.value), [lo, hi] = AXIS_RANGE[key];
+    let err = "";
+    if (!isFinite(a) || !isFinite(b)) err = `${name} axis: enter Min and Max.`;
+    else if (a < lo || b > hi) err = `${name} axis: values must be between ${lo} and ${hi} ${unit}.`;
+    else if (!(a < b)) err = `${name} axis: Min must be smaller than Max.`;
+    if (err) { out.error = out.error ? out.error + " " + err : err; return; }
+    out.axes[key] = [a, b];
+  };
+  one(els.axT, els.axTmin, els.axTmax, "t", "Temperature", DEG + "C");
+  one(els.axP, els.axPmin, els.axPmax, "p", "Period", "h");
+  out.error = out.error ? out.error + " Using automatic scaling for that axis." : "";
+  return out;
+}
+// Fill empty Min/Max of a just-ticked axis with the Period plot's automatic limits.
+function prefillAxis(key) {
+  if (!result) return;
+  const [x0, x1, y0, y1] = autoLimits("period", result, els.showArr.checked);
+  const [lo, hi] = AXIS_RANGE[key];
+  const [minEl, maxEl, a, b] = key === "t" ? [els.axTmin, els.axTmax, x0, x1] : [els.axPmin, els.axPmax, y0, y1];
+  if (minEl.value !== "" || maxEl.value !== "") return;
+  minEl.value = Math.max(lo, Math.floor(a * 10) / 10).toFixed(1);
+  maxEl.value = Math.min(hi, Math.ceil(b * 10) / 10).toFixed(1);
+}
+// Redraw after an axis setting changed, showing or clearing axis errors.
+function axesChanged() {
+  toggleStates();
+  const { error } = readAxes();
+  if (error) setStatus(error, true);
+  else if (result) setStatus(lastOkStatus);
+  if (result) render();
+}
+els.axT.addEventListener("change", () => { if (els.axT.checked) prefillAxis("t"); axesChanged(); });
+els.axP.addEventListener("change", () => { if (els.axP.checked) prefillAxis("p"); axesChanged(); });
+[els.axTmin, els.axTmax, els.axPmin, els.axPmax].forEach(el => el.addEventListener("change", axesChanged));
+
 /* ---------------- Event handlers (which control runs which function) ---------------- */
 document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { current = b.dataset.tab; render(); }));
 $("btn-run").addEventListener("click", run);
@@ -1114,10 +1226,10 @@ els.title.addEventListener("input", () => { if (result && current !== "report") 
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); } });
 
 // Save buttons.
-$("save-svg").addEventListener("click", () => result && save(fileBase() + "_q10_plots.svg", combinedSVG(result, els.title.value.trim(), els.showArr.checked)));
+$("save-svg").addEventListener("click", () => result && save(fileBase() + "_q10_plots.svg", combinedSVG(result, els.title.value.trim(), els.showArr.checked, readAxes().axes)));
 $("save-png").addEventListener("click", async () => {
   if (!result) return;
-  try { save(fileBase() + "_q10_plots.png", await svgToPNG(combinedSVG(result, els.title.value.trim(), els.showArr.checked))); }
+  try { save(fileBase() + "_q10_plots.png", await svgToPNG(combinedSVG(result, els.title.value.trim(), els.showArr.checked, readAxes().axes))); }
   catch (e) { setStatus(e.message, true); }
 });
 $("save-txt").addEventListener("click", () => result && save(fileBase() + "_q10_results.txt", reportText(result, els.tab.checked) + "\n"));
