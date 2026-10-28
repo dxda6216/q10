@@ -245,6 +245,21 @@ kbd{font:10.5px var(--mono);opacity:.75;margin-left:4px}
 .status{margin-top:6px;font-size:.78rem;color:var(--muted);min-height:1.3em}
 .status.error{background:var(--err-bg);color:var(--err);padding:6px 8px;border-radius:6px}
 
+/* Compact left panel: smaller type and spacing so the data box gets as much height as possible. */
+.panel{padding:10px 12px;font-size:13px}
+.panel h1{font-size:.98rem}
+.panel .head{margin-bottom:6px}
+.panel fieldset{margin-top:6px;padding-top:5px}
+.panel legend{font-size:.8rem;margin-bottom:2px}
+.panel label,.panel .lbl{font-size:.8rem}
+.panel .lbl{font-weight:600;white-space:nowrap}
+.panel .hint{font-size:.7rem;line-height:1.35}
+.panel input[type=text],.panel input[type=number],.panel select{font-size:.8rem;padding:3px 6px}
+.panel button{font-size:.78rem;padding:3px 9px}
+.panel button.primary{font-size:.88rem;padding:5px}
+.panel .check{gap:5px}
+.panel .status{margin-top:5px;min-height:0}
+.panel > .row{margin-bottom:2px}
 /* Output area: notice, result numbers (readout), tabs + save buttons, view, axis scales. */
 .out{display:flex;flex-direction:column;gap:8px;min-width:0}
 .readout{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;flex:none;margin:0}
@@ -312,23 +327,25 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
        Top to bottom: title, plot title, data (fills the remaining height), base
        temperature + Calculate + status, fit range, options, short help. -->
   <aside class="panel" aria-label="Inputs">
+    <!-- Compact panel: everything except the data box takes as little height as possible,
+         so the data box gets the remaining height of the window. -->
     <!-- Header: title and the "How it works" button, which opens the help dialog. -->
     <div class="head">
       <h1 title="Fits period(T) = τ_b · Q10^((T_b − T)/10) to circadian period data">Q<sub>10</sub> calculator<br>for circadian period</h1>
       <button type="button" id="btn-help" aria-haspopup="dialog">How it works</button>
     </div>
 
-    <fieldset>
-      <legend><label for="title">Plot title</label></legend>
-      <input id="title" autocomplete="off" type="text" placeholder="Optional">
-    </fieldset>
+    <div class="row nw">
+      <label for="title" class="lbl">Plot title</label>
+      <input id="title" autocomplete="off" type="text" placeholder="Optional" style="flex:1;min-width:0">
+    </div>
 
-    <!-- Data box. The <input type=file> for CSV loading is hidden and opened from the button. -->
+    <!-- Data box (fills the remaining height). The <input type=file> for CSV loading is
+         hidden and opened from the button. -->
     <fieldset class="grow">
-      <legend><label for="data">Data, one pair per line</label></legend>
-      <p class="hint" title="A header line and lines starting with # are skipped.">Temperature (°C) and period (h); comma, space or tab separated.</p>
+      <legend title="One pair per line, separated by comma, space or tab. A header line and lines starting with # are skipped."><label for="data">Data: temperature (°C), period (h)</label></legend>
       <textarea id="data" autocomplete="off" spellcheck="false"></textarea>
-      <div class="row" style="margin-top:6px">
+      <div class="row" style="margin-top:4px">
         <button type="button" id="btn-csv">Load CSV…</button>
         <button type="button" id="btn-example">Load example</button>
         <button type="button" id="btn-clear">Clear</button>
@@ -336,27 +353,28 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       </div>
     </fieldset>
 
-    <!-- Base temperature T_b (options from BASE_CHOICES), Calculate and the status line. -->
+    <!-- Base temperature T_b (options from BASE_CHOICES), Calculate, and error messages
+         (the status line is shown only when there is a problem; results are in the summary row). -->
     <fieldset>
       <legend><label for="base">Base temperature</label></legend>
       <div class="row nw">
         <select id="base" autocomplete="off" style="flex:1;width:auto;min-width:0"></select>
-        <label for="custom">Custom</label><input id="custom" autocomplete="off" type="number" step="0.1" value="37" style="width:4.6em"><span>°C</span>
+        <label for="custom">Custom</label><input id="custom" autocomplete="off" type="number" step="0.1" value="37" style="width:4.4em"><span>°C</span>
       </div>
-      <div style="margin-top:8px"><button type="button" class="primary" id="btn-run">Calculate <kbd>Ctrl+Enter</kbd></button></div>
-      <div class="status" id="status" role="status" aria-live="polite">Ready.</div>
+      <div style="margin-top:6px"><button type="button" class="primary" id="btn-run">Calculate <kbd>Ctrl+Enter</kbd></button></div>
+      <div class="status" id="status" role="status" aria-live="polite" hidden></div>
     </fieldset>
 
-    <!-- Temperature range for the fit (Low/High enabled only when the box is ticked). -->
+    <!-- Temperature range for the fit (Low/High enabled only when the box is ticked).
+         A range can also be selected by dragging across a plot (see the hint below the plot). -->
     <fieldset>
-      <legend>Temperature range for the fit</legend>
+      <legend title="Or drag across a plot; double-click a plot to use all data.">Temperature range for the Q<sub>10</sub> fit</legend>
       <label class="check"><input type="checkbox" id="use-range" autocomplete="off"> Use only data within a temperature range</label>
-      <div class="row nw" style="margin-top:5px">
-        <label for="low">Low</label><input id="low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.6em">
-        <label for="high">High</label><input id="high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.6em"><span>°C</span>
-        <button type="button" id="btn-all">Use all data</button>
+      <div class="row nw" style="margin-top:3px">
+        <label for="low">Low</label><input id="low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.4em">
+        <label for="high">High</label><input id="high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.4em"><span>°C</span>
+        <button type="button" id="btn-all" style="margin-left:auto">Use all data</button>
       </div>
-      <p class="hint" style="margin-top:4px">Or drag across a plot; double-click a plot to use all data.</p>
     </fieldset>
 
     <!-- Optional polynomial fit of period vs. temperature (off by default). Changes only
@@ -368,20 +386,19 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
         <label for="poly-deg" style="margin-left:auto">Degree</label>
         <select id="poly-deg" autocomplete="off" style="width:auto"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
       </div>
-      <div class="row nw" style="margin-top:4px">
+      <div class="row nw" style="margin-top:3px">
         <label class="check" title="Unticked: all data points are used for the polynomial"><input type="checkbox" id="poly-range" autocomplete="off"> Range</label>
-        <label for="poly-low">Low</label><input id="poly-low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.6em">
-        <label for="poly-high">High</label><input id="poly-high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.6em"><span>°C</span>
+        <label for="poly-low">Low</label><input id="poly-low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.4em">
+        <label for="poly-high">High</label><input id="poly-high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.4em"><span>°C</span>
       </div>
-      <p class="hint" style="margin-top:3px">Drawn on the Period plot; equation, parameters and 200 calculated points are added to the report.</p>
+      <p class="hint" style="margin:2px 0 0">Fitted to all data, or to the data between Low and High when Range is ticked — not to the Q<sub>10</sub> fit range.</p>
     </fieldset>
 
     <fieldset>
       <!-- Arrhenius regression line on/off (only redraws; nothing is recalculated). -->
       <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line</label>
-      <label class="check" style="margin-top:2px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
+      <label class="check" style="margin-top:1px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
     </fieldset>
-
   </aside>
 
   <!-- ============ Output area ============ -->
@@ -495,7 +512,7 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
       <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included); after a first calculation the results update as soon as you change them. Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
       <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
-      <li>Optionally, tick <strong>Fit a polynomial</strong> to fit a polynomial of period on temperature (degree 1–6), to all data or to its own temperature range. It is drawn on the Period plot as a purple line from the lowest to the highest temperature of its data, extended by 10 % of that span on each side, and the report gains its equation, the coefficients with standard errors, R², adjusted R², the residual standard error and 200 calculated points. It is fitted by ordinary least squares and does not affect the Q<sub>10</sub> fit.</li>
+      <li>Optionally, tick <strong>Fit a polynomial</strong> to fit a polynomial of period on temperature (degree 1–6), to all data or to its own temperature range. The polynomial uses all data, or the data between its own Low and High when <strong>Range</strong> is ticked — not the Q<sub>10</sub> fit range. It is drawn on the Period plot as a purple line over the temperature span of <em>all</em> data, extended by 10 % of that span on each side (outside the fitted range this is an extrapolation). The report always gains its equation, the coefficients with standard errors, R², adjusted R² and the residual standard error; 200 calculated points are added when <strong>Also show tab-delimited data in the report</strong> is ticked. It is fitted by ordinary least squares and does not affect the Q<sub>10</sub> fit.</li>
       <li>The axis scales are set automatically. To set them yourself, tick <strong>Set temperature axis</strong> and/or <strong>Set period axis</strong> under <strong>Axis scales</strong> and enter Min and Max (temperature 0–100 °C, period 0–180 h). The frequency and Arrhenius axes are converted from these ranges. The plots and saved figures update at once; untick to return to automatic scaling.</li>
       <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
       <li>Switch between the Period, Frequency, Arrhenius and Report tabs.</li>
@@ -533,7 +550,7 @@ const BASE_CHOICES = [
   ["0", `0${DEG}C`, 0], ["4", `4${DEG}C`, 4], ["25", `25${DEG}C`, 25], ["30", `30${DEG}C`, 30],
   ["37", `37${DEG}C`, 37], ["100", `100${DEG}C`, 100],
   ["min", "Minimum"], ["max", "Maximum"], ["mean", "Average"], ["median", "Median"],
-  ["custom", "Custom value (enter below)"],
+  ["custom", "Custom value (enter at right)"],
 ];
 
 /* =====================================================================
@@ -771,13 +788,15 @@ function arrheniusFit(T, P) {
        a_j = sum_{k>=j} b_k h^-k C(k, j) (-c)^(k-j),   i.e. a = M b,
    and Cov(a) = M Cov(b) M^T, so the reported SEs are those of a direct fit in T.
    R^2 = 1 - SSE/SST; adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - d - 1).
-   The curve is evaluated (in u) at 200 evenly spaced temperatures from the lowest
-   fitted temperature minus 10 % of the fitted temperature span to the highest plus
-   10 % (like the Q10 curve, which extends its span by 33.3 % on each side).
+   The curve is evaluated (in u) at 200 evenly spaced temperatures covering ALL data
+   (not only the fitted points): from the lowest temperature minus 10 % of the
+   all-data span to the highest plus 10 % (like the Q10 curve, which extends the
+   all-data span by 33.3 % on each side). Outside the fitted range this is an
+   extrapolation of the polynomial.
    --------------------------------------------------------------------- */
 const POLY_POINTS = 200;
-const POLY_MARGIN = 0.10;  // curve extends 10 % of the fitted temperature span on each side
-function polyFit(T, P, d) {
+const POLY_MARGIN = 0.10;  // curve extends 10 % of the all-data temperature span on each side
+function polyFit(T, P, d, span) {  // span = [lowest, highest] temperature of all data
   const n = T.length, m = d + 1;
   if (n < d + 2) throw new Error(`Polynomial of degree ${d} needs at least ${d + 2} data points (${n} in its range).`);
   const tmin = Math.min(...T), tmax = Math.max(...T);
@@ -818,15 +837,17 @@ function polyFit(T, P, d) {
   const covA = M.map(rj => M.map(ri => rj.reduce((acc, Mjk, k) => acc + Mjk * ri.reduce((a2, Mil, l) => a2 + Mil * covB[k][l], 0), 0)));
   const se = covA.map((row, i) => Math.sqrt(Math.max(row[i], 0)));
   const r2 = sst > 0 ? 1 - sse / sst : NaN;
-  const c0 = tmin - (tmax - tmin) * POLY_MARGIN, c1 = tmax + (tmax - tmin) * POLY_MARGIN;
+  const [s0, s1] = span || [tmin, tmax];
+  const c0 = s0 - (s1 - s0) * POLY_MARGIN, c1 = s1 + (s1 - s0) * POLY_MARGIN;
   const curveT = Array.from({ length: POLY_POINTS }, (_, i) => c0 + (c1 - c0) * i / (POLY_POINTS - 1));
   return { degree: d, n, tmin, tmax, coef: a, se, r2, r2adj: 1 - (1 - r2) * (n - 1) / dof,
            rse: Math.sqrt(s2), curveT, curveP: curveT.map(t => evalU((t - c) / h)) };
 }
 
-// Report lines for the polynomial fit: settings, equation, coefficients ± SE, goodness
-// of fit, and the 200 calculated points (tab-delimited, for pasting into a spreadsheet).
-function polyReport(pf) {
+// Report lines for the polynomial fit: settings, equation, coefficients ± SE and goodness
+// of fit; with tabbed (the "tab-delimited data" option) also the 200 calculated points,
+// tab-delimited for pasting into a spreadsheet.
+function polyReport(pf, tabbed) {
   const g = v => (Math.abs(v) >= 1e-3 && Math.abs(v) < 1e5) || v === 0 ? v.toPrecision(7) : v.toExponential(6);
   const pow = k => k === 0 ? "" : k === 1 ? "*T" : `*T^${k}`;
   const eq = "Period = " + pf.coef.map((a, k) => (k === 0 ? g(a) : (a < 0 ? " - " : " + ") + g(Math.abs(a))) + pow(k)).join("");
@@ -837,10 +858,10 @@ function polyReport(pf) {
     "Coefficients (\u00B1 SE):",
     ...pf.coef.map((a, k) => `  a${k} (T^${k}) = ${g(a)} \u00B1 ${g(pf.se[k])}`),
     `R\u00B2 = ${pf.r2.toFixed(6)}   adjusted R\u00B2 = ${pf.r2adj.toFixed(6)}   residual SE = ${pf.rse.toPrecision(4)} h`,
-    "",
-    `POLYNOMIAL FIT CURVE (${POLY_POINTS} points, ${f3(pf.curveT[0])}–${f3(pf.curveT[POLY_POINTS - 1])} ${DEG}C: data range \u00B1 ${POLY_MARGIN * 100} % of its span)`,
-    `Temp (${DEG}C)\tPeriod (hours)`,
-    ...pf.curveT.map((t, i) => `${f3(t)}\t${f3(pf.curveP[i])}`),
+    ...(tabbed ? ["",
+      `POLYNOMIAL FIT CURVE (${POLY_POINTS} points, ${f3(pf.curveT[0])}–${f3(pf.curveT[POLY_POINTS - 1])} ${DEG}C: all-data range \u00B1 ${POLY_MARGIN * 100} % of its span)`,
+      `Temp (${DEG}C)\tPeriod (hours)`,
+      ...pf.curveT.map((t, i) => `${f3(t)}\t${f3(pf.curveP[i])}`)] : []),
   ];
 }
 
@@ -888,7 +909,7 @@ function reportText(r, tabbed) {
     `Slope d ln(f) / d(1000/T) = ${r.arr.slope.toFixed(4)} \u00B1 ${r.arr.seSlope.toFixed(4)} (10\u00B3 K)`,
     `Intercept = ${r.arr.intercept.toFixed(4)} \u00B1 ${r.arr.seInt.toFixed(4)}`,
     `R\u00B2 = ${r.arr.r2.toFixed(6)}`);
-  if (r.poly) out.push("", ...polyReport(r.poly));
+  if (r.poly) out.push("", ...polyReport(r.poly, tabbed));
   return out.join("\n");
 }
 // Two-line summary shown above the plots.
@@ -1004,7 +1025,7 @@ function plotSVG(kind, r, c, W = 600, H = heightFor(600), ox = 0, oy = 0, standa
   const used = r.xa.map((t, i) => [P.tx(t), P.ty(r.ya[i])]);
   const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
   const arrOn = showArr && kind === "arrhenius";
-  // Optional polynomial fit (Period plot only): its data's temperature span plus 10 % on each side.
+  // Optional polynomial fit (Period plot only): the all-data temperature span plus 10 % on each side.
   const polyOn = kind === "period" && !!r.poly;
   const polyLine = polyOn ? r.poly.curveT.map((t, i) => [t, r.poly.curveP[i]]) : [];
   const arrLine = arrOn ? r.fcx.map(t => [P.tx(t), r.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
@@ -1114,7 +1135,12 @@ function toggleStates() {
   els.axPmin.disabled = els.axPmax.disabled = !(result && els.axP.checked);
 }
 // Show a message in the status line; err=true shows it as an error (also announced to screen readers).
-function setStatus(msg, err = false) { els.status.textContent = msg; els.status.classList.toggle("error", err); els.status.setAttribute("role", err ? "alert" : "status"); }
+// Only problems are shown (under Calculate); results appear in the summary row, so
+// normal messages are not displayed and the line takes no space.
+function setStatus(msg, err = false) {
+  els.status.textContent = err ? msg : ""; els.status.hidden = !(err && msg);
+  els.status.classList.toggle("error", err); els.status.setAttribute("role", err ? "alert" : "status");
+}
 
 // Redraw the current tab:
 //   nothing calculated -> prompt text
@@ -1328,7 +1354,7 @@ function updatePoly() {
     const idx = T.map((_, i) => i).filter(i => T[i] >= lo && T[i] <= hi);
     T = idx.map(i => result.x[i]); P = idx.map(i => result.y[i]);
   }
-  try { result.poly = polyFit(T, P, parseInt(els.polyDeg.value, 10)); return ""; }
+  try { result.poly = polyFit(T, P, parseInt(els.polyDeg.value, 10), [Math.min(...result.x), Math.max(...result.x)]); return ""; }
   catch (e) { return e.message; }
 }
 function polyToggleStates() {

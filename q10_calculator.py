@@ -180,7 +180,7 @@ EXAMPLE_DATA = "\n".join(
 
 # Base-temperature options. Those in FIXED_BASE have a fixed value; Minimum /
 # Maximum / Average / Median are computed from the data used in the fit.
-CUSTOM_BASE = "Custom value (enter below)"
+CUSTOM_BASE = "Custom value (enter at right)"
 BASE_CHOICES = [
     f"-273.15{DEG}C (absolute zero)",
     f"0{DEG}C",
@@ -472,7 +472,7 @@ def report_text(r, show_tab_delimited=False):
         f"R\u00B2 = {arr['r2']:.6f}",
     ]
     if r.get("poly"):
-        out += [""] + poly_report(r["poly"])
+        out += [""] + poly_report(r["poly"], show_tab_delimited)
     return "\n".join(out)
 
 
@@ -480,10 +480,10 @@ def report_text(r, show_tab_delimited=False):
 # Optional polynomial fit of period on temperature (off by default)
 # ----------------------------------------------------------------------
 POLY_POINTS = 200
-POLY_MARGIN = 0.10  # curve extends 10 % of the fitted temperature span on each side
+POLY_MARGIN = 0.10  # curve extends 10 % of the all-data temperature span on each side
 
 
-def poly_fit(temps, periods, degree):
+def poly_fit(temps, periods, degree, span=None):
     """Ordinary least-squares polynomial  Period(T) = a0 + a1*T + ... + ad*T^d.
 
     For numerical stability the fit is done in the scaled variable
@@ -496,9 +496,11 @@ def poly_fit(temps, periods, degree):
     and Cov(a) = M Cov(b) M^T, so the reported SEs are those of a direct fit in T
     (fitting raw powers of T directly is badly conditioned for higher degrees).
     R^2 = 1 - SSE/SST; adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - d - 1).
-    The curve is evaluated at 200 evenly spaced temperatures from the lowest fitted
-    temperature minus 10 % of the fitted span to the highest plus 10 % (like the Q10
-    curve, which extends its span by 33.3 % on each side).
+    The curve is evaluated at 200 evenly spaced temperatures covering ALL data
+    (span = (lowest, highest) temperature of all data, not only the fitted points):
+    from the lowest minus 10 % of the all-data span to the highest plus 10 % (like the
+    Q10 curve, which extends the all-data span by 33.3 % on each side). Outside the
+    fitted range this is an extrapolation of the polynomial.
     """
     T, P = np.asarray(temps, float), np.asarray(periods, float)
     n, m = len(T), degree + 1
@@ -526,7 +528,8 @@ def poly_fit(temps, periods, degree):
     a = M @ b
     se = np.sqrt(np.clip(np.diag(M @ cov_b @ M.T), 0, None))
     r2 = 1 - sse / sst if sst > 0 else float("nan")
-    c0, c1 = tmin - (tmax - tmin) * POLY_MARGIN, tmax + (tmax - tmin) * POLY_MARGIN
+    s0, s1 = span if span is not None else (tmin, tmax)
+    c0, c1 = s0 - (s1 - s0) * POLY_MARGIN, s1 + (s1 - s0) * POLY_MARGIN
     curve_t = np.linspace(c0, c1, POLY_POINTS)
     curve_p = np.vander((curve_t - c) / h, m, increasing=True) @ b
     return dict(degree=degree, n=n, tmin=tmin, tmax=tmax, coef=a, se=se, r2=r2,
@@ -534,9 +537,10 @@ def poly_fit(temps, periods, degree):
                 curve_t=curve_t, curve_p=curve_p)
 
 
-def poly_report(pf):
-    """Report lines: settings, equation, coefficients ± SE, goodness of fit and the 200
-    calculated points (tab-delimited, for pasting into a spreadsheet)."""
+def poly_report(pf, show_tab_delimited=False):
+    """Report lines: settings, equation, coefficients ± SE and goodness of fit; with
+    show_tab_delimited (the "tab-delimited data" option) also the 200 calculated points,
+    tab-delimited for pasting into a spreadsheet."""
     def g(v):
         return f"{v:.7g}" if v == 0 or 1e-3 <= abs(v) < 1e5 else f"{v:.6e}"
     pw = lambda k: "" if k == 0 else ("*T" if k == 1 else f"*T^{k}")
@@ -549,12 +553,15 @@ def poly_report(pf):
         "Coefficients (\u00B1 SE):",
         *[f"  a{k} (T^{k}) = {g(a)} \u00B1 {g(e)}" for k, (a, e) in enumerate(zip(pf["coef"], pf["se"]))],
         f"R\u00B2 = {pf['r2']:.6f}   adjusted R\u00B2 = {pf['r2adj']:.6f}   residual SE = {pf['rse']:.4g} h",
-        "",
-        f"POLYNOMIAL FIT CURVE ({POLY_POINTS} points, {pf['curve_t'][0]:.3f}–{pf['curve_t'][-1]:.3f} {DEG}C: "
-        f"data range \u00B1 {POLY_MARGIN * 100:g} % of its span)",
-        f"Temp ({DEG}C)\tPeriod (hours)",
-        *[f"{t:.3f}\t{p:.3f}" for t, p in zip(pf["curve_t"], pf["curve_p"])],
     ]
+    if show_tab_delimited:
+        lines += [
+            "",
+            f"POLYNOMIAL FIT CURVE ({POLY_POINTS} points, {pf['curve_t'][0]:.3f}–{pf['curve_t'][-1]:.3f} {DEG}C: "
+            f"all-data range \u00B1 {POLY_MARGIN * 100:g} % of its span)",
+            f"Temp ({DEG}C)\tPeriod (hours)",
+            *[f"{t:.3f}\t{p:.3f}" for t, p in zip(pf["curve_t"], pf["curve_p"])],
+        ]
     return lines
 
 
@@ -613,7 +620,7 @@ def draw_period(ax, r, show_arr=False):
     ax.plot(r["fcx"], r["fcy"], "--", color=C_FIT, zorder=Z_LINE, label=_fit_label(r))
     pairs = [(r["x"], r["y"]), (r["fcx"], r["ref"]["fcy"])]
     pf = r.get("poly")
-    if pf:  # optional polynomial fit: its data's temperature span plus 10 % on each side
+    if pf:  # optional polynomial fit: the all-data temperature span plus 10 % on each side
         ax.plot(pf["curve_t"], pf["curve_p"], "-", color=C_POLY, lw=1.8, zorder=Z_LINE,
                 label=f"Polynomial (degree {pf['degree']})   R$^2$ = {pf['r2']:.4f}")
         pairs.append((pf["curve_t"], pf["curve_p"]))
@@ -880,10 +887,12 @@ HELP_CONTENT = [
         ["Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data "
          "used in the fit."],
         ["Optionally, tick ", ("b", "Fit a polynomial"), " to fit a polynomial of period on temperature "
-         "(degree 1–6), to all data or to its own temperature range. It is drawn on the Period plot as a "
-         "purple line from the lowest to the highest temperature of its data, extended by 10 % of that "
-         "span on each side, and Results gains its equation, the coefficients with standard errors, R², "
-         "adjusted R², the residual standard error and 200 calculated points. It is fitted by ordinary "
+         "(degree 1–6). It uses all data, or the data between its own Low and High when ", ("b", "Range"),
+         " is ticked – not the Q10 fit range. It is drawn on the Period plot as a purple line over the "
+         "temperature span of all data, extended by 10 % of that span on each side (outside the fitted "
+         "range this is an extrapolation). Results always gains its equation, the coefficients with "
+         "standard errors, R², adjusted R² and the residual standard error; 200 calculated points are "
+         "added when ", ("b", "Also show tab-delimited data"), " is ticked. It is fitted by ordinary "
          "least squares and does not affect the Q10 fit."],
         ["The axis scales are set automatically. To set them yourself, tick ", ("b", "Temperature"),
          " and/or ", ("b", "Period"), " under ", ("b", "Axis scales"), " and enter Min and Max "
@@ -1092,29 +1101,32 @@ class Q10App(tk.Tk):
         muted = "#5F6670"
 
         head = ttk.Frame(left)
-        head.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+        head.pack(side=tk.TOP, fill=tk.X, pady=(0, 3))
         ttk.Label(head, text="Q10 calculator for circadian period",
                   font=("TkDefaultFont", 11, "bold")).pack(side=tk.LEFT)
         ttk.Button(head, text="How it works", command=self.show_help).pack(side=tk.RIGHT, padx=(8, 0))
 
-        f = ttk.LabelFrame(left, text="Plot title", padding=(6, 2, 6, 4))
-        f.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
-        ttk.Entry(f, textvariable=self.var_title, width=42).pack(fill=tk.X)
+        # Plot title on one line (label + entry) to save height for the data box.
+        f = ttk.Frame(left)
+        f.pack(side=tk.TOP, fill=tk.X, pady=(0, 3))
+        ttk.Label(f, text="Plot title", font=("TkDefaultFont", 9, "bold")).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Entry(f, textvariable=self.var_title).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # ---- bottom-packed part (listed from the bottom of the panel upwards) ----
         row = ttk.Frame(left)
-        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
+        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(3, 0))
         ttk.Button(row, text="Save figure...", command=self.save_figure).pack(side=tk.LEFT, expand=True, fill=tk.X)
         ttk.Button(row, text="Save results...", command=self.save_results).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
-        ttk.Checkbutton(left, text="Also show tab-delimited data in Results",
-                        variable=self.var_tab).pack(side=tk.BOTTOM, anchor="w")
+        # Tab-delimited data on/off: Results is rewritten at once (nothing is recalculated).
+        ttk.Checkbutton(left, text="Also show tab-delimited data in Results", variable=self.var_tab,
+                        command=self._refresh_results).pack(side=tk.BOTTOM, anchor="w")
         # Arrhenius regression line on/off: only the Arrhenius plot is redrawn.
         ttk.Checkbutton(left, text="Show Arrhenius regression line", variable=self.var_arr,
                         command=self._redraw_arrhenius).pack(side=tk.BOTTOM, anchor="w")
 
         # Optional polynomial fit of period vs. temperature (live update, see _poly_changed)
-        f = ttk.LabelFrame(left, text="Polynomial fit (period vs. temperature)", padding=(6, 2, 6, 4))
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 4))
+        f = ttk.LabelFrame(left, text="Polynomial fit (period vs. temperature)", padding=(6, 1, 6, 3))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 3))
         row = ttk.Frame(f)
         row.pack(fill=tk.X)
         ttk.Checkbutton(row, text="Fit a polynomial", variable=self.var_poly,
@@ -1139,13 +1151,13 @@ class Q10App(tk.Tk):
         for sp in (self.sp_poly_low, self.sp_poly_high):
             for ev in ("<Return>", "<FocusOut>"):
                 sp.bind(ev, lambda e: self._poly_changed(0))
-        ttk.Label(f, text="Drawn on the Period plot; equation, parameters and 200 calculated "
-                          "points are added to Results.", foreground=muted, wraplength=320,
-                  justify="left").pack(anchor="w", pady=(2, 0))
+        ttk.Label(f, text="Fitted to all data, or to the data between Low and High when Range "
+                          "is ticked - not to the Q10 fit range.", foreground=muted, wraplength=330,
+                  justify="left", font=("TkDefaultFont", 8)).pack(anchor="w", pady=(1, 0))
 
         # Temperature range for the fit (live update, see _range_changed)
-        f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=(6, 2, 6, 4))
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 4))
+        f = ttk.LabelFrame(left, text="Temperature range for the Q10 fit", padding=(6, 1, 6, 3))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 3))
         ttk.Checkbutton(f, text="Use only data within a temperature range",
                         variable=self.var_range, command=lambda: self._range_changed(0)).pack(anchor="w")
         row = ttk.Frame(f)
@@ -1161,21 +1173,19 @@ class Q10App(tk.Tk):
                 sp.bind(ev, lambda e: self._range_changed(0))
         ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
         ttk.Button(row, text="Use all data", command=self.use_all_data).pack(side=tk.RIGHT)
-        ttk.Label(f, text="Or drag across a plot; double-click a plot to use all data.",
-                  foreground=muted).pack(anchor="w", pady=(2, 0))
 
-        # Status, Calculate, base temperature (directly under the data box)
+        # Calculate, then an error line that is shown only when there is a problem (results
+        # appear in the Results tab and on the plots, so normal messages are not displayed).
         self.status = tk.StringVar(value="Ready.")
-        self.status_label = ttk.Label(left, textvariable=self.status, foreground=muted, wraplength=330)
-        self.status_label.pack(side=tk.BOTTOM, anchor="w", pady=(2, 6))
-        # Errors are shown in red, everything else in grey.
-        self.status.trace_add("write", lambda *a: self.status_label.configure(
-            foreground="#9A2A18" if str(self.status.get()).startswith(("Cannot calculate", "Error"))
-            or " axis:" in str(self.status.get()) else muted))
-        ttk.Button(left, text="Calculate (Ctrl+Enter)", command=self.run).pack(side=tk.BOTTOM, fill=tk.X, ipady=3)
+        self.status_label = ttk.Label(left, text="", foreground="#9A2A18", wraplength=330, justify="left")
+        self.status_label.pack(side=tk.BOTTOM, anchor="w", pady=(2, 4))
+        self.status_label.pack_forget()
+        self.status.trace_add("write", lambda *a: self._show_status())
+        self.btn_calc = ttk.Button(left, text="Calculate (Ctrl+Enter)", command=self.run)
+        self.btn_calc.pack(side=tk.BOTTOM, fill=tk.X, ipady=2, pady=(0, 3))
 
-        f = ttk.LabelFrame(left, text="Base temperature", padding=(6, 2, 6, 4))
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
+        f = ttk.LabelFrame(left, text="Base temperature", padding=(6, 1, 6, 3))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 4))
         cb = ttk.Combobox(f, textvariable=self.var_base, values=BASE_CHOICES, state="readonly", width=20)
         cb.pack(side=tk.LEFT, fill=tk.X, expand=True)
         cb.bind("<<ComboboxSelected>>", lambda e: (self._toggle_states(), self._rerun()))
@@ -1188,11 +1198,11 @@ class Q10App(tk.Tk):
             self.sp_custom.bind(ev, lambda e: self._rerun())
 
         # ---- data box: fills the remaining height ----
-        f = ttk.LabelFrame(left, text=f"Data, one pair per line: temperature ({DEG}C), period (h)",
-                           padding=(6, 2, 6, 4))
-        f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 4))
+        f = ttk.LabelFrame(left, text=f"Data: temperature ({DEG}C), period (h), one pair per line",
+                           padding=(6, 1, 6, 3))
+        f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 3))
         row = ttk.Frame(f)
-        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
+        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(3, 0))
         ttk.Button(row, text="Load CSV...", command=self.load_csv).pack(side=tk.LEFT)
         ttk.Button(row, text="Load example", command=self.load_example).pack(side=tk.LEFT, padx=4)
         ttk.Button(row, text="Clear", command=self.clear_data).pack(side=tk.LEFT)
@@ -1542,7 +1552,9 @@ class Q10App(tk.Tk):
                     return "Polynomial fit: range Low must be smaller than High."
                 mask = (T >= lo) & (T <= hi)
                 T, P = T[mask], P[mask]
-            self.result["poly"] = poly_fit(T, P, int(self.var_poly_deg.get()))
+            x_all = self.result["x"]
+            self.result["poly"] = poly_fit(T, P, int(self.var_poly_deg.get()),
+                                           span=(float(x_all.min()), float(x_all.max())))
         except ValueError as exc:
             return str(exc) if str(exc).startswith("Polynomial") else f"Polynomial fit: {exc}"
         return ""
@@ -1565,6 +1577,22 @@ class Q10App(tk.Tk):
         self.status.set(err if err else self.last_ok)
         self._render_plot(0)  # only the Period plot shows the polynomial
         self._set_text(self.txt_out, report_text(self.result, self.var_tab.get()))
+
+    def _show_status(self):
+        """Show the status line (in red, under Calculate) only for problems."""
+        msg = str(self.status.get())
+        if msg.startswith(("Cannot calculate", "Error", "Polynomial")) or " axis:" in msg:
+            self.status_label.configure(text=msg)
+            if not self.status_label.winfo_manager():  # not packed yet
+                self.status_label.pack(side=tk.BOTTOM, anchor="w", pady=(2, 4), before=self.btn_calc)
+        else:
+            self.status_label.configure(text="")
+            self.status_label.pack_forget()
+
+    def _refresh_results(self):
+        """Rewrite the Results text (e.g. after the tab-delimited option changed)."""
+        if self.result is not None:
+            self._set_text(self.txt_out, report_text(self.result, self.var_tab.get()))
 
     def _rerun(self):
         """Recalculate after the base temperature changed (only once something was calculated)."""
