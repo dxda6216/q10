@@ -165,7 +165,7 @@ DEG = "\u00B0"
 R_GAS = 8.314462618       # gas constant, J mol^-1 K^-1
 HTML_URL = "https://github.com/dxda6216/q10/blob/main/index.html"  # browser version
 
-DATA_ROWS = 15            # visible lines in the data input box
+DATA_ROWS = 10            # visible lines in the data input box
 TITLE_SIZE = 18           # plot-title font size (single-plot tabs)
 TITLE_SIZE_COMBINED = 20  # plot-title font size (saved 3-plot figure)
 
@@ -482,13 +482,21 @@ def report_text(r, show_tab_delimited=False):
 # Every drawer takes (ax, r, show_arr); only the Arrhenius plot uses show_arr.
 # ======================================================================
 
+# Plot colours and drawing order (as in the sister app): fitted lines (Z_LINE) below
+# the data points (Z_POINT), so lines never cover points.
+C_USED, C_EXCL, C_FIT, C_ARR = "#FF0000", "#5DC85D", "#2B8CD6", "dimgray"
+C_BAND = "#6F8BAE"          # fit-range band and drag selection
+Z_LINE, Z_POINT = 2, 3
+PLOT_ASPECT = 3 / 4         # plot area height / width (width 4 : height 3)
+
+
 def _scatter(ax, r, xs_all, ys_all, xs_used, ys_used):
     """Data points: red = used in the fit, light green = outside the fit range."""
     if not r["use_range"]:
-        ax.scatter(xs_used, ys_used, s=35, color="red", label="Data")
+        ax.scatter(xs_used, ys_used, s=35, color=C_USED, label="Data", zorder=Z_POINT)
     else:
-        ax.scatter(xs_all, ys_all, s=30, color="lightgreen", label="Data")
-        ax.scatter(xs_used, ys_used, s=35, color="red",
+        ax.scatter(xs_all, ys_all, s=30, color=C_EXCL, label="Data", zorder=Z_POINT)
+        ax.scatter(xs_used, ys_used, s=35, color=C_USED, zorder=Z_POINT + 0.1,
                    label="Data points used for Q$_{10}$ calculation")
 
 
@@ -517,7 +525,7 @@ def _fit_label(r):
 
 def draw_period(ax, r, show_arr=False):
     _scatter(ax, r, r["x"], r["y"], r["xa"], r["ya"])
-    ax.plot(r["fcx"], r["fcy"], "--", color="blue", label=_fit_label(r))
+    ax.plot(r["fcx"], r["fcy"], "--", color=C_FIT, zorder=Z_LINE, label=_fit_label(r))
     _fix_limits(ax, [(r["x"], r["y"]), (r["fcx"], r["ref"]["fcy"])])
     ax.set_xlabel(f"Temperature ({DEG}C)")
     ax.set_ylabel("Period (hours)")
@@ -527,7 +535,7 @@ def draw_period(ax, r, show_arr=False):
 
 def draw_frequency(ax, r, show_arr=False):
     _scatter(ax, r, r["x"], 24 / r["y"], r["xa"], 24 / r["ya"])
-    ax.plot(r["fcx"], 24 / r["fcy"], "--", color="blue", label=_fit_label(r))
+    ax.plot(r["fcx"], 24 / r["fcy"], "--", color=C_FIT, zorder=Z_LINE, label=_fit_label(r))
     _fix_limits(ax, [(r["x"], 24 / r["y"]), (r["fcx"], 24 / r["ref"]["fcy"])])
     ax.set_xlabel(f"Temperature ({DEG}C)")
     ax.set_ylabel(r"Frequency (day$^{-1}$)")
@@ -541,9 +549,9 @@ def draw_arrhenius(ax, r, show_arr=False):
     inv = lambda t: 1000 / (np.asarray(t) + 273.15)
     ln_f = lambda p: np.log(24 / np.asarray(p))
     _scatter(ax, r, inv(r["x"]), ln_f(r["y"]), inv(r["xa"]), ln_f(r["ya"]))
-    ax.plot(inv(r["fcx"]), ln_f(r["fcy"]), "--", color="blue", label=_fit_label(r))
+    ax.plot(inv(r["fcx"]), ln_f(r["fcy"]), "--", color=C_FIT, zorder=Z_LINE, label=_fit_label(r))
     if show_arr:
-        ax.plot(inv(r["fcx"]), arrhenius_lnf(r["arr"], r["fcx"]), "-", color="dimgray", lw=1.5,
+        ax.plot(inv(r["fcx"]), arrhenius_lnf(r["arr"], r["fcx"]), "-", color=C_ARR, lw=1.5, zorder=Z_LINE,
                 label=f"Arrhenius regression   E$_a$ = {r['arr']['Ea'] / 1000:.2f} kJ/mol")
     pairs = [(inv(r["x"]), ln_f(r["y"])), (inv(r["fcx"]), ln_f(r["ref"]["fcy"]))]
     if show_arr:
@@ -572,6 +580,7 @@ FROM_X = {"Period": lambda v: v, "Frequency": lambda v: v,
 #        stays automatic.
 # Manual limits are used exactly (no padding); anything outside is clipped by the axes.
 AXIS_RANGE = {"t": (0.0, 100.0), "p": (0.0, 180.0)}  # °C, hours
+AXIS_STEP = 0.5                                        # step of the axis fields (°C, hours)
 
 
 def apply_axes(ax, name, axes):
@@ -647,8 +656,10 @@ def render_single(fig, drawer, r, title, show_arr=False, name=None, axes=None):
     drawer(ax, r, show_arr)
     if name:
         apply_axes(ax, name, axes)
+    ax.set_box_aspect(PLOT_ASPECT)  # keeps 4:3 when the window is resized
+    ax.set_anchor("N")              # ...directly below the title and summary
     if name and r["use_range"]:
-        ax.axvspan(TO_X[name](r["low"]), TO_X[name](r["high"]), color="blue", alpha=0.07, lw=0, zorder=0)
+        ax.axvspan(TO_X[name](r["low"]), TO_X[name](r["high"]), color=C_BAND, alpha=0.09, lw=0, zorder=0)
     fig._q10_header = (title, summary_line(r), TITLE_SIZE, 9)
     apply_header(fig)
     return ax
@@ -657,7 +668,7 @@ def render_single(fig, drawer, r, title, show_arr=False, name=None, axes=None):
 def make_span_selector(ax, onselect, onmove):
     """Horizontal SpanSelector, compatible with matplotlib 3.3-3.4 (rectprops) and 3.5+ (props)."""
     kw = dict(useblit=True, onmove_callback=onmove)
-    style = dict(facecolor="tab:blue", alpha=0.2)
+    style = dict(facecolor=C_BAND, alpha=0.16)
     try:
         return SpanSelector(ax, onselect, "horizontal", props=style, **kw)
     except TypeError:
@@ -671,7 +682,7 @@ def render_combined(fig, r, title, show_arr=False, axes=None):
         ax = fig.add_subplot(3, 1, i)
         drawer(ax, r, show_arr)
         apply_axes(ax, name, axes)
-        ax.set_box_aspect(3 / 4)
+        ax.set_box_aspect(PLOT_ASPECT)
     fig._q10_header = (title, summary_line(r), TITLE_SIZE_COMBINED, 10)
     apply_header(fig)
 
@@ -921,8 +932,8 @@ class Q10App(tk.Tk):
         super().__init__()
         self.title("Q10 calculator for circadian period")
         # Tall enough for the data box, but never taller than the screen.
-        self.geometry(f"1250x{min(820, self.winfo_screenheight() - 80)}")
-        self.minsize(1000, 560)
+        self.geometry(f"1280x{min(860, self.winfo_screenheight() - 60)}")  # fits a 900-px-high screen
+        self.minsize(1080, 600)
         self.result = None
         self.help_win = None
         self.selectors = []  # one SpanSelector per plot tab (references keep them alive)
@@ -951,6 +962,8 @@ class Q10App(tk.Tk):
         self._suppress_range = False
         for var in (self.var_low, self.var_high):
             var.trace_add("write", lambda *a: self._range_changed(self.RANGE_DELAY_MS))
+        # Editing the plot title redraws the plots at once.
+        self.var_title.trace_add("write", lambda *a: self._redraw_plots())
 
         self.bind("<Control-Return>", lambda e: self.run())
 
@@ -962,116 +975,93 @@ class Q10App(tk.Tk):
 
     # ---- layout ------------------------------------------------------
     def _build_controls(self):
-        left = ttk.Frame(self, padding=8)
+        """Left panel, top to bottom (as in the sister app "Q10 calculator: temperature vs.
+        activity"): header with How it works, plot title, data, base temperature, Calculate,
+        status, fit range, options, save buttons.
+        Widgets below the data box are packed to the BOTTOM first (in reverse order), so on a
+        short window only the data box shrinks and everything fits a 900-pixel-high screen."""
+        left = ttk.Frame(self, padding=(8, 6, 8, 6))
         left.pack(side=tk.LEFT, fill=tk.Y)
+        muted = "#5F6670"
 
-        # Header: program name and the "How it works" button.
         head = ttk.Frame(left)
-        head.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
-        ttk.Label(head, text="Q10 calculator", font=("TkDefaultFont", 13, "bold")).pack(side=tk.LEFT)
-        ttk.Button(head, text="How it works", command=self.show_help).pack(side=tk.RIGHT)
+        head.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+        ttk.Label(head, text="Q10 calculator for circadian period",
+                  font=("TkDefaultFont", 11, "bold")).pack(side=tk.LEFT)
+        ttk.Button(head, text="How it works", command=self.show_help).pack(side=tk.RIGHT, padx=(8, 0))
 
-        # Packing order matters: everything below the data box is packed to the BOTTOM
-        # first, so on a short screen only the data box shrinks (it scrolls) while the
-        # buttons stay visible.
-        f = ttk.LabelFrame(left, text="Plot title", padding=6)
-        f.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
-        ttk.Entry(f, textvariable=self.var_title, width=44).pack(fill=tk.X)
+        f = ttk.LabelFrame(left, text="Plot title", padding=(6, 2, 6, 4))
+        f.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+        ttk.Entry(f, textvariable=self.var_title, width=42).pack(fill=tk.X)
 
-        self.status = tk.StringVar(value="Ready.")
-        ttk.Label(left, textvariable=self.status, foreground="#555", wraplength=330
-                  ).pack(side=tk.BOTTOM, anchor="w", pady=(8, 0))
-
+        # ---- bottom-packed part (listed from the bottom of the panel upwards) ----
         row = ttk.Frame(left)
-        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(6, 0))
+        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
         ttk.Button(row, text="Save figure...", command=self.save_figure).pack(side=tk.LEFT, expand=True, fill=tk.X)
         ttk.Button(row, text="Save results...", command=self.save_results).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
-
-        ttk.Button(left, text="Calculate  (Ctrl+Enter)", command=self.run
-                   ).pack(side=tk.BOTTOM, fill=tk.X, ipady=4)
-
         ttk.Checkbutton(left, text="Also show tab-delimited data in Results",
-                        variable=self.var_tab).pack(side=tk.BOTTOM, anchor="w", pady=(0, 6))
+                        variable=self.var_tab).pack(side=tk.BOTTOM, anchor="w")
         # Arrhenius regression line on/off: only the Arrhenius plot is redrawn.
-        ttk.Checkbutton(left, text="Show Arrhenius regression line on the Arrhenius plot",
-                        variable=self.var_arr, command=self._redraw_arrhenius
-                        ).pack(side=tk.BOTTOM, anchor="w", pady=(0, 2))
+        ttk.Checkbutton(left, text="Show Arrhenius regression line", variable=self.var_arr,
+                        command=self._redraw_arrhenius).pack(side=tk.BOTTOM, anchor="w")
 
-        # Manual axis scales: only redraw the plots; nothing is recalculated.
-        f = ttk.LabelFrame(left, text="Axis scales", padding=6)
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
-        self.ax_spins = {}
-        for key, label, unit, v_on, v_min, v_max in (
-                ("t", "Temperature", f"{DEG}C", self.var_axt, self.var_tmin, self.var_tmax),
-                ("p", "Period", "h", self.var_axp, self.var_pmin, self.var_pmax)):
-            lo, hi = AXIS_RANGE[key]
-            row = ttk.Frame(f)
-            row.pack(fill=tk.X, pady=(0, 3))
-            ttk.Checkbutton(row, text=label, width=12, variable=v_on,
-                            command=lambda k=key: self._axis_ticked(k)).pack(side=tk.LEFT)
-            spins = []
-            for var, txt in ((v_min, "Min"), (v_max, "Max")):
-                ttk.Label(row, text=txt).pack(side=tk.LEFT, padx=(4, 2))
-                sp = ttk.Spinbox(row, from_=lo, to=hi, increment=0.1, width=6, textvariable=var,
-                                 command=self._axes_changed)
-                sp.pack(side=tk.LEFT)
-                sp.bind("<Return>", lambda e: self._axes_changed())
-                sp.bind("<FocusOut>", lambda e: self._axes_changed())
-                spins.append(sp)
-            ttk.Label(row, text=unit).pack(side=tk.LEFT, padx=(3, 0))
-            self.ax_spins[key] = spins
-        ttk.Label(f, text=f"Unticked axes are automatic. Temperature 0-100 {DEG}C, period 0-180 h; "
-                          "frequency and Arrhenius axes are converted.",
-                  foreground="#555", wraplength=320, justify="left").pack(anchor="w")
-
-        f = ttk.LabelFrame(left, text="Base temperature", padding=6)
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
-        cb = ttk.Combobox(f, textvariable=self.var_base, values=BASE_CHOICES, state="readonly", width=34)
-        cb.pack(fill=tk.X)
-        cb.bind("<<ComboboxSelected>>", lambda e: self._toggle_states())
-        row = ttk.Frame(f)
-        row.pack(fill=tk.X, pady=(4, 0))
-        ttk.Label(row, text="Custom value").pack(side=tk.LEFT)
-        self.sp_custom = ttk.Spinbox(row, from_=-273.15, to=200, increment=0.1, width=8,
-                                     textvariable=self.var_custom)
-        self.sp_custom.pack(side=tk.LEFT, padx=4)
-        ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
-
-        f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=6)
-        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
+        # Temperature range for the fit (live update, see _range_changed)
+        f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=(6, 2, 6, 4))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 4))
         ttk.Checkbutton(f, text="Use only data within a temperature range",
                         variable=self.var_range, command=lambda: self._range_changed(0)).pack(anchor="w")
         row = ttk.Frame(f)
-        row.pack(fill=tk.X, pady=(4, 0))
+        row.pack(fill=tk.X, pady=(2, 0))
         ttk.Label(row, text="Low").pack(side=tk.LEFT)
-        self.sp_low = ttk.Spinbox(row, from_=-50, to=150, increment=0.1, width=8, textvariable=self.var_low)
-        for ev in ("<Return>", "<FocusOut>"):
-            self.sp_low.bind(ev, lambda e: self._range_changed(0))
-        self.sp_low.pack(side=tk.LEFT, padx=(4, 12))
+        self.sp_low = ttk.Spinbox(row, from_=-50, to=150, increment=0.5, width=6, textvariable=self.var_low)
+        self.sp_low.pack(side=tk.LEFT, padx=3)
         ttk.Label(row, text="High").pack(side=tk.LEFT)
-        self.sp_high = ttk.Spinbox(row, from_=-50, to=150, increment=0.1, width=8, textvariable=self.var_high)
-        for ev in ("<Return>", "<FocusOut>"):
-            self.sp_high.bind(ev, lambda e: self._range_changed(0))
-        self.sp_high.pack(side=tk.LEFT, padx=4)
+        self.sp_high = ttk.Spinbox(row, from_=-50, to=150, increment=0.5, width=6, textvariable=self.var_high)
+        self.sp_high.pack(side=tk.LEFT, padx=3)
+        for sp in (self.sp_low, self.sp_high):
+            for ev in ("<Return>", "<FocusOut>"):
+                sp.bind(ev, lambda e: self._range_changed(0))
         ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
         ttk.Button(row, text="Use all data", command=self.use_all_data).pack(side=tk.RIGHT)
-        ttk.Label(f, text="Tip: after calculating, drag across a plot to choose the range; "
-                          "double-click a plot to use all data.",
-                  foreground="#555", wraplength=320, justify="left").pack(anchor="w", pady=(4, 0))
+        ttk.Label(f, text="Or drag across a plot; double-click a plot to use all data.",
+                  foreground=muted).pack(anchor="w", pady=(2, 0))
 
-        # Data box: fills the remaining space.
-        f = ttk.LabelFrame(left, text="Data (one pair per line)", padding=6)
-        f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 6))
-        ttk.Label(f, text=f"temperature({DEG}C)  period(h)  - separated by comma / space / tab"
-                  ).pack(side=tk.TOP, anchor="w")
+        # Status, Calculate, base temperature (directly under the data box)
+        self.status = tk.StringVar(value="Ready.")
+        self.status_label = ttk.Label(left, textvariable=self.status, foreground=muted, wraplength=330)
+        self.status_label.pack(side=tk.BOTTOM, anchor="w", pady=(2, 6))
+        # Errors are shown in red, everything else in grey.
+        self.status.trace_add("write", lambda *a: self.status_label.configure(
+            foreground="#9A2A18" if str(self.status.get()).startswith(("Cannot calculate", "Error"))
+            or " axis:" in str(self.status.get()) else muted))
+        ttk.Button(left, text="Calculate (Ctrl+Enter)", command=self.run).pack(side=tk.BOTTOM, fill=tk.X, ipady=3)
+
+        f = ttk.LabelFrame(left, text="Base temperature", padding=(6, 2, 6, 4))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 6))
+        cb = ttk.Combobox(f, textvariable=self.var_base, values=BASE_CHOICES, state="readonly", width=20)
+        cb.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        cb.bind("<<ComboboxSelected>>", lambda e: (self._toggle_states(), self._rerun()))
+        ttk.Label(f, text="Custom").pack(side=tk.LEFT, padx=(6, 2))
+        self.sp_custom = ttk.Spinbox(f, from_=-273.15, to=200, increment=0.1, width=6,
+                                     textvariable=self.var_custom)
+        self.sp_custom.pack(side=tk.LEFT)
+        ttk.Label(f, text=f"{DEG}C").pack(side=tk.LEFT, padx=(2, 0))
+        for ev in ("<Return>", "<FocusOut>"):
+            self.sp_custom.bind(ev, lambda e: self._rerun())
+
+        # ---- data box: fills the remaining height ----
+        f = ttk.LabelFrame(left, text=f"Data, one pair per line: temperature ({DEG}C), period (h)",
+                           padding=(6, 2, 6, 4))
+        f.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 4))
         row = ttk.Frame(f)
-        row.pack(side=tk.BOTTOM, fill=tk.X)
+        row.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
         ttk.Button(row, text="Load CSV...", command=self.load_csv).pack(side=tk.LEFT)
         ttk.Button(row, text="Load example", command=self.load_example).pack(side=tk.LEFT, padx=4)
         ttk.Button(row, text="Clear", command=self.clear_data).pack(side=tk.LEFT)
         box = ttk.Frame(f)
-        box.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(0, 4))
-        self.txt_data = tk.Text(box, width=44, height=DATA_ROWS, wrap="none", undo=True)
+        box.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.txt_data = tk.Text(box, width=32, height=DATA_ROWS, font=("TkFixedFont", 10),
+                                wrap="none", undo=True)
         sb = ttk.Scrollbar(box, orient="vertical", command=self.txt_data.yview)
         self.txt_data.configure(yscrollcommand=sb.set)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
@@ -1079,43 +1069,70 @@ class Q10App(tk.Tk):
         # Typing in the data box hides the start-up notice.
         self.txt_data.bind("<Key>", lambda e: self._hide_notice(), add="+")
 
+    def _build_axis_bar(self, parent):
+        """Axis scales: one compact row below the plots. Only redraws; nothing is recalculated."""
+        bar = ttk.Frame(parent, padding=(4, 2, 4, 4))
+        ttk.Label(bar, text="Axis scales", font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT, padx=(0, 10))
+        self.ax_spins = {}
+        for key, label, unit, v_on, v_min, v_max in (
+                ("t", "Temperature", f"{DEG}C", self.var_axt, self.var_tmin, self.var_tmax),
+                ("p", "Period", "h", self.var_axp, self.var_pmin, self.var_pmax)):
+            lo, hi = AXIS_RANGE[key]
+            ttk.Checkbutton(bar, text=label, variable=v_on,
+                            command=lambda k=key: self._axis_ticked(k)).pack(side=tk.LEFT)
+            spins = []
+            for var, txt in ((v_min, "Min"), (v_max, "Max")):
+                ttk.Label(bar, text=txt).pack(side=tk.LEFT, padx=(4 if txt == "Min" else 6, 2))
+                sp = ttk.Spinbox(bar, from_=lo, to=hi, increment=AXIS_STEP, format="%.1f", width=7,
+                                 textvariable=var, command=self._axes_changed)
+                sp.pack(side=tk.LEFT)
+                for ev in ("<Return>", "<KP_Enter>", "<FocusOut>"):
+                    sp.bind(ev, lambda e: self._axes_changed())
+                spins.append(sp)
+            ttk.Label(bar, text=unit).pack(side=tk.LEFT, padx=(3, 18))
+            self.ax_spins[key] = spins
+        ttk.Label(bar, text=f"0-100 {DEG}C, 0-180 h, step 0.5", foreground="#5F6670").pack(side=tk.LEFT)
+        return bar
+
     def _build_output(self):
-        right = ttk.Frame(self, padding=(0, 8, 8, 8))
+        right = ttk.Frame(self, padding=(0, 6, 8, 6))
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Start-up notice (demo + privacy statement + link). Hidden by Clear,
         # editing the data, or loading a CSV.
-        self.notice = tk.Frame(right, bg="#EEF2FB", highlightthickness=1,
-                               highlightbackground="#C9D3EA", padx=12, pady=8)
+        bg = "#EEF0F3"
+        self.notice = tk.Frame(right, bg=bg, padx=8, pady=4)
         self.notice_labels = [
-            tk.Label(self.notice, text=NOTICE_DEMO, bg="#EEF2FB", fg="#18233A",
-                     justify="left", anchor="w"),
-            tk.Label(self.notice, text=NOTICE_PRIVACY, bg="#EEF2FB", fg="#4B5563",
-                     justify="left", anchor="w"),
+            tk.Label(self.notice, text=NOTICE_DEMO, bg=bg, fg="#1B1F24", justify="left", anchor="w"),
+            tk.Label(self.notice, text=NOTICE_PRIVACY, bg=bg, fg="#5F6670", justify="left", anchor="w",
+                     font=("TkDefaultFont", 9)),
         ]
         for i, lab in enumerate(self.notice_labels):
-            lab.pack(side=tk.TOP, fill=tk.X, pady=(0 if i == 0 else 6, 0))
+            lab.pack(side=tk.TOP, fill=tk.X, pady=(0 if i == 0 else 3, 0))
         # Link row: only the URL is clickable/underlined; the hint after it is plain text.
-        link_row = tk.Frame(self.notice, bg="#EEF2FB")
+        link_row = tk.Frame(self.notice, bg=bg)
         link_row.pack(side=tk.TOP, fill=tk.X)
         # padx=0 / bd=0 remove the labels' own padding, so the gap is just the one space
         # at the start of the hint text.
-        link = tk.Label(link_row, text=HTML_URL, bg="#EEF2FB", fg="#2F4FB5", cursor="hand2",
+        link = tk.Label(link_row, text=HTML_URL, bg=bg, fg="#0E6B66", cursor="hand2",
                         font=("TkDefaultFont", 9, "underline"), padx=0, bd=0)
         link.pack(side=tk.LEFT)
         link.bind("<Button-1>", lambda e: open_url(HTML_URL))
-        tk.Label(link_row, text=' (use the "Download raw file" button)', bg="#EEF2FB",
-                 fg="#4B5563", font=("TkDefaultFont", 9), padx=0, bd=0).pack(side=tk.LEFT)
+        tk.Label(link_row, text=' (use the "Download raw file" button)', bg=bg,
+                 fg="#5F6670", font=("TkDefaultFont", 9), padx=0, bd=0).pack(side=tk.LEFT)
         # Re-wrap the notice text whenever its width changes.
-        self.notice.bind("<Configure>", lambda e: [lab.configure(wraplength=max(200, e.width - 30))
+        self.notice.bind("<Configure>", lambda e: [lab.configure(wraplength=max(200, e.width - 20))
                                                    for lab in self.notice_labels])
+
+        self.axbar = self._build_axis_bar(right)
+        self.axbar.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))  # below the plots
 
         self.nb = ttk.Notebook(right)
         self.nb.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         tab = ttk.Frame(self.nb)
         self.nb.add(tab, text="Results")
-        self.txt_out = tk.Text(tab, wrap="none", font=("Courier", 10))
+        self.txt_out = tk.Text(tab, wrap="none", font=("TkFixedFont", 10))
         ys = ttk.Scrollbar(tab, orient="vertical", command=self.txt_out.yview)
         xs = ttk.Scrollbar(tab, orient="horizontal", command=self.txt_out.xview)
         self.txt_out.configure(yscrollcommand=ys.set, xscrollcommand=xs.set)
@@ -1127,14 +1144,18 @@ class Q10App(tk.Tk):
         for name, _ in DRAWERS:
             tab = ttk.Frame(self.nb)
             self.nb.add(tab, text=name)
-            fig = Figure(figsize=(6, 4.5), dpi=100)
+            fig = Figure(figsize=(7.5, 6), dpi=100)
             canvas = FigureCanvasTkAgg(fig, master=tab)
-            canvas.mpl_connect("resize_event", lambda ev, f=fig: self._relayout(f))
+            canvas.mpl_connect("resize_event", lambda ev, f=fig, cv=canvas: (self._relayout(f), cv.draw_idle()))
             canvas.mpl_connect("button_press_event", self._on_plot_press)
-            NavigationToolbar2Tk(canvas, tab).update()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            # Toolbar below the plot (pack_toolbar=False needs matplotlib 3.3+).
+            toolbar = NavigationToolbar2Tk(canvas, tab, pack_toolbar=False)
+            toolbar.update()
+            toolbar.pack(side=tk.BOTTOM, fill=tk.X)
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
             self.figs.append(fig)
             self.canvases.append(canvas)
+        self.nb.select(1)
 
     @staticmethod
     def _relayout(fig):
@@ -1149,9 +1170,10 @@ class Q10App(tk.Tk):
         self.sp_low.configure(state=rng)
         self.sp_high.configure(state=rng)
         self.sp_custom.configure(state="normal" if self.var_base.get() == CUSTOM_BASE else "disabled")
+        have = getattr(self, "result", None) is not None
         for key, on in (("t", self.var_axt), ("p", self.var_axp)):
             for sp in getattr(self, "ax_spins", {}).get(key, []):
-                sp.configure(state="normal" if on.get() else "disabled")
+                sp.configure(state="normal" if have and on.get() else "disabled")
 
     # ---- start-up notice and help -----------------------------------
     def _show_notice(self):
@@ -1189,6 +1211,7 @@ class Q10App(tk.Tk):
             canvas.draw()
         self.selectors = []
         self.result = None
+        self._toggle_states()
         self.status.set("Cleared.")
 
     def load_csv(self):
@@ -1258,6 +1281,7 @@ class Q10App(tk.Tk):
         if result["use_range"]:
             msg += f"  (fit range {result['low']:g}–{result['high']:g} {DEG}C, {len(result['xa'])} points)"
         self.last_ok = msg
+        self._toggle_states()
         self.status.set(msg)
         err = self.read_axes()[1]
         if err:
@@ -1351,6 +1375,17 @@ class Q10App(tk.Tk):
             return  # nothing calculated yet (or cleared): wait for Calculate
         self._range_job = self.after(delay, self._range_apply)
 
+    def _rerun(self):
+        """Recalculate after the base temperature changed (only once something was calculated)."""
+        if self.result is not None:
+            self.run(select_tab=False, quiet=True)
+
+    def _redraw_plots(self):
+        """Redraw the plot tabs (e.g. after the plot title changed); nothing is recalculated."""
+        if self.result is not None:
+            for i in range(len(DRAWERS)):
+                self._render_plot(i)
+
     def _range_apply(self):
         self._range_job = None
         if self.var_range.get() and (not str(self.var_low.get()).strip()
@@ -1396,8 +1431,8 @@ class Q10App(tk.Tk):
             draw_period(ax, self.result, False)
             a, b = ax.get_xlim() if key == "t" else ax.get_ylim()
             lo, hi = AXIS_RANGE[key]
-            vmin.set(f"{max(lo, math.floor(a * 10) / 10):.1f}")
-            vmax.set(f"{min(hi, math.ceil(b * 10) / 10):.1f}")
+            vmin.set(f"{max(lo, math.floor(a / AXIS_STEP) * AXIS_STEP):.1f}")
+            vmax.set(f"{min(hi, math.ceil(b / AXIS_STEP) * AXIS_STEP):.1f}")
         self._axes_changed()
 
     def _axes_changed(self):

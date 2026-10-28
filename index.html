@@ -162,142 +162,158 @@
      Without a connection they are skipped and system fonts are used. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ---------------------------------------------------------------
-   Design tokens (colours and fonts) as CSS variables.
-   Dark mode overrides the values in the @media block and in
-   [data-theme="dark"] below.
-   --used / --excluded / --fit are the plot colours for points used in
-   the fit, points outside the fit range, and the fitted curve.
-   The safe-area padding keeps content clear of phone notches and
-   system bars.
+   Layout and colours follow the sister app "Q10 calculator:
+   temperature vs. activity" (github.com/dxda6216/q10_temperature_vs_activity).
+   Design tokens (colours and fonts) are CSS variables; dark mode
+   overrides them below. --used / --excluded / --fit / --arr / --band are
+   the plot colours (points used in the fit, points outside the fit
+   range, fitted Q10 curve, Arrhenius regression line, fit-range band).
+   The safe-area padding keeps content clear of phone notches.
    --------------------------------------------------------------- */
 :root{
   color-scheme: light;
-  --bg:#EEF1F5; --panel:#FFFFFF; --ink:#18233A; --muted:#5B6578; --line:#D5DBE5;
-  --field:#F7F9FB; --accent:#2F4FB5; --accent-ink:#FFFFFF;
-  --used:#C2410C; --excluded:#8DBB90; --fit:#2F4FB5; --arr:#4B5563; --grid:#E3E8EF; --axis:#6B7486;
-  --err-bg:#FDECEA; --err:#9F1D12;
-  --sans:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --bg:#F1F2F4; --panel:#FFFFFF; --ink:#1B1F24; --muted:#5F6670; --line:#D7DBE0;
+  --field:#F7F8FA; --accent:#0E6B66; --accent-ink:#FFFFFF;
+  --used:#FF0000; --excluded:#5DC85D; --fit:#2B8CD6; --arr:#6B7079; --grid:#E6E9ED; --axis:#6E7580;
+  --band:#6F8BAE; --err-bg:#FBE9E5; --err:#962818;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme: dark;
-    --bg:#121826; --panel:#1B2333; --ink:#E6EAF2; --muted:#9AA4B8; --line:#2E384C;
-    --field:#151C2A; --accent:#7D95F0; --accent-ink:#0E1424;
-    --used:#F08A4B; --excluded:#5E8C63; --fit:#8EA3F5; --arr:#C3CAD7; --grid:#263043; --axis:#8A94A8;
-    --err-bg:#3A1C1A; --err:#FFB4AB;
+    --bg:#131416; --panel:#1C1E21; --ink:#E7E9EC; --muted:#9BA1A9; --line:#30343A;
+    --field:#16181B; --accent:#5CC2B9; --accent-ink:#08201D;
+    --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --grid:#2A2E33; --axis:#8C929A;
+    --band:#8FA7C6; --err-bg:#3B1E19; --err:#FFB3A3;
   }
 }
 :root[data-theme="dark"]{
   color-scheme: dark;
-  --bg:#121826; --panel:#1B2333; --ink:#E6EAF2; --muted:#9AA4B8; --line:#2E384C;
-  --field:#151C2A; --accent:#7D95F0; --accent-ink:#0E1424;
-  --used:#F08A4B; --excluded:#5E8C63; --fit:#8EA3F5; --arr:#C3CAD7; --grid:#263043; --axis:#8A94A8;
-  --err-bg:#3A1C1A; --err:#FFB4AB;
+  --bg:#131416; --panel:#1C1E21; --ink:#E7E9EC; --muted:#9BA1A9; --line:#30343A;
+  --field:#16181B; --accent:#5CC2B9; --accent-ink:#08201D;
+  --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --grid:#2A2E33; --axis:#8C929A;
+  --band:#8FA7C6; --err-bg:#3B1E19; --err:#FFB3A3;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
-/* Overall layout: input panel on the left, output on the right; stacked below 880px. */
-.app{display:grid;grid-template-columns:minmax(300px,360px) 1fr;gap:20px;max-width:1400px;margin:0 auto;padding:20px}
-@media (max-width:880px){.app{grid-template-columns:1fr;padding:12px;gap:12px}}
-h1{font-size:1.35rem;line-height:1.2;margin:0 0 2px;font-weight:700;letter-spacing:-.01em}
-.sub{color:var(--muted);margin:0 0 16px;font-size:.88rem}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
-fieldset{border:0;border-top:1px solid var(--line);margin:14px 0 0;padding:12px 0 0}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+/* Two columns that fit a 900 px tall window; the plot takes the remaining height.
+   Below 901 px wide (or under 640 px high) the page scrolls normally. */
+.app{display:grid;grid-template-columns:minmax(330px,360px) 1fr;gap:14px;max-width:1500px;margin:0 auto;padding:12px}
+@media (min-width:901px) and (min-height:640px){
+  .app{height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+  .panel{overflow-y:auto;display:flex;flex-direction:column}
+  .panel .grow{flex:1;min-height:150px;display:flex;flex-direction:column}
+  .panel .grow textarea{flex:1;height:auto;min-height:90px;resize:none}
+  .out{min-height:0}
+  .view{flex:1;min-height:0;display:flex;flex-direction:column}
+  .plot{flex:1;min-height:0}
+  .plot svg{height:100%}
+  pre.report{max-height:none;flex:1}
+}
+@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr);padding:10px;gap:10px}.axes .grp{flex-wrap:wrap;white-space:normal}}
+h1{font-size:1.02rem;line-height:1.25;margin:0 0 10px;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+fieldset{border:0;border-top:1px solid var(--line);margin:9px 0 0;padding:8px 0 0;min-width:0}
 fieldset:first-of-type{border-top:0;margin-top:0;padding-top:0}
-legend{font-weight:600;font-size:.92rem;padding:0;margin-bottom:6px}
-label{font-size:.88rem}
-.hint{color:var(--muted);font-size:.8rem;margin:0 0 6px}
+legend{font-weight:600;font-size:.86rem;padding:0;margin-bottom:4px;float:left;width:100%}
+legend + *{clear:both}
+label{font-size:.84rem}
+.hint{color:var(--muted);font-size:.76rem;margin:0 0 4px}
 input[type=text],input[type=number],select,textarea{
-  width:100%;font:inherit;color:var(--ink);background:var(--field);
-  border:1px solid var(--line);border-radius:6px;padding:7px 9px}
-input[type=number]{width:6.5em}
-textarea{font:13px/1.55 var(--mono);resize:vertical;min-height:180px;height:300px;white-space:pre;overflow:auto}
+  width:100%;font:inherit;font-size:.86rem;color:var(--ink);background:var(--field);
+  border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+input[type=number]{width:6.6em}
+textarea{font:12.5px/1.5 var(--mono);resize:vertical;min-height:110px;height:190px;white-space:pre;overflow:auto}
 input:disabled,select:disabled{opacity:.45}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.row + .row{margin-top:8px}
-.check{display:flex;gap:8px;align-items:center}
-button{font:inherit;font-size:.88rem;border-radius:6px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:6px 12px;cursor:pointer}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.check{display:flex;gap:6px;align-items:center}
+@media (min-width:901px){.row.nw{flex-wrap:nowrap}}
+button{white-space:nowrap;font:inherit;font-size:.82rem;border-radius:6px;border:1px solid var(--line);background:var(--field);color:var(--ink);padding:4px 10px;cursor:pointer}
 button:hover{border-color:var(--axis)}
-button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;width:100%;padding:10px;font-size:.95rem}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;width:100%;padding:7px;font-size:.92rem}
 button.primary:hover{filter:brightness(1.08)}
-.grow{flex:1}
-kbd{font:11px var(--mono);opacity:.75;margin-left:4px}
-.status{margin-top:10px;font-size:.84rem;color:var(--muted);min-height:1.3em}
-.status.error{background:var(--err-bg);color:var(--err);padding:8px 10px;border-radius:6px}
+kbd{font:10.5px var(--mono);opacity:.75;margin-left:4px}
+.status{margin-top:6px;font-size:.78rem;color:var(--muted);min-height:1.3em}
+.status.error{background:var(--err-bg);color:var(--err);padding:6px 8px;border-radius:6px}
 
-/* Output area: result numbers (readout), tabs, plot/report view. */
-.out{display:flex;flex-direction:column;gap:14px;min-width:0}
-.readout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
-.readout div{padding:12px 16px;border-left:1px solid var(--line)}
+/* Output area: notice, result numbers (readout), tabs + save buttons, view, axis scales. */
+.out{display:flex;flex-direction:column;gap:8px;min-width:0}
+.readout{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;flex:none;margin:0}
+.readout div{padding:6px 12px;border-left:1px solid var(--line);min-width:0}
 .readout div:first-child{border-left:0}
-.readout dt{font-size:.8rem;color:var(--muted)}
-.readout dd{margin:0;font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
-.readout dd small{font-size:.8rem;font-weight:400;color:var(--muted);margin-left:4px}
-@media (max-width:620px){.readout{grid-template-columns:1fr 1fr}.readout div:nth-child(3){border-left:0}.readout div:nth-child(n+3){border-top:1px solid var(--line)}}
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
-.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 14px;color:var(--muted);font-weight:500;white-space:nowrap}
+.readout dt{font-size:.74rem;color:var(--muted)}
+.readout dd{margin:0;font-size:1.15rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;overflow-wrap:anywhere}
+.readout dd small{font-size:.72rem;font-weight:400;color:var(--muted);margin-left:4px}
+@media (max-width:760px){.readout{grid-template-columns:1fr 1fr}.readout div{border-left:0;border-top:1px solid var(--line)}.readout div:first-child{grid-column:1/-1;border-top:0}.readout div:nth-child(odd):not(:first-child){border-left:1px solid var(--line)}}
+.bar{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);flex:none}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:6px 12px;color:var(--muted);font-weight:500;white-space:nowrap;font-size:.86rem}
 .tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
-.view{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
-@media (max-width:620px){.view{padding:10px}}
-.figtitle{text-align:center;font-weight:600;font-size:1.15rem;margin:0}
-.figsum{white-space:pre-wrap;text-align:center;color:var(--muted);font-size:.86rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
-.plot svg{width:100%;height:auto;display:block;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-/* Drag-to-select range on the plots */
+.saves{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:5px}
+/* Axis scales: one compact row below the plot */
+.axes{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 12px;flex:none}
+.axes .ttl{font-weight:600;font-size:.84rem}
+.axes .grp{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.axes input[type=number]{width:5em}
+.axes .hint{margin:0 0 0 2px;font-size:.74rem}
+.view{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+@media (max-width:620px){.view{padding:8px}}
+.figtitle{text-align:center;font-weight:600;font-size:1.05rem;margin:0;flex:none}
+.figsum{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 4px;font-variant-numeric:tabular-nums;flex:none;line-height:1.35;white-space:pre-wrap}
+/* The SVG keeps its 4:3 plot area and is centred in the space left (never stretched). */
+.plot svg{width:100%;display:block;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .plot svg .hit{cursor:crosshair}
-.plot-hint{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin-top:6px;font-size:.82rem;color:var(--muted)}
-.plot-hint .live{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
-.plot-hint button{padding:4px 10px;font-size:.82rem}
-.plot-hint button:disabled{opacity:.45;cursor:not-allowed}
-.empty{display:grid;place-items:center;min-height:380px;color:var(--muted);text-align:center;font-size:.92rem}
+.plothint{text-align:center;color:var(--muted);font-size:.74rem;margin:2px 0 0;flex:none}
+.plothint .live{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.empty{display:grid;place-items:center;min-height:300px;flex:1;color:var(--muted);text-align:center;font-size:.9rem}
 .empty p{max-width:34ch;margin:0}
-pre.report{font:12.5px/1.55 var(--mono);margin:0;overflow:auto;max-height:70vh;white-space:pre}
-.saves{display:flex;gap:8px;flex-wrap:wrap}
-.saves button:disabled{opacity:.45;cursor:not-allowed}
+pre.report{font:12px/1.5 var(--mono);margin:0;overflow:auto;max-height:70vh;white-space:pre}
 [hidden]{display:none!important}
 /* Notice shown at start-up while the demo result is displayed. */
-.demo{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.demo{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:6px 12px;font-size:.82rem;flex:none}
 .demo p{margin:0}
 .demo a,.help-body a{color:var(--accent);overflow-wrap:anywhere}
-.demo p.privacy{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
-/* "How it works" button in the panel header and the help dialog it opens. */
-.head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.help-btn{flex:none;padding:5px 10px;font-size:.82rem}
+.demo p.privacy{margin-top:4px;color:var(--muted);font-size:.76rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* Short "How it works" in the panel; the full explanation opens in a dialog. */
+details.help{font-size:.8rem;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--ink);font-weight:500}
+details.help p{margin:.5em 0}
+details.help button{margin-top:2px}
 dialog.help{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);box-shadow:0 18px 50px rgba(10,20,40,.28)}
 dialog.help::backdrop{background:rgba(14,22,38,.45)}
-.help-top{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
-.help-top h2{margin:0;font-size:1.15rem}
-.help-body{padding:4px 20px 22px;line-height:1.6}
-.help-body h3{font-size:1rem;margin:22px 0 6px}
-.help-body h4{font-size:.92rem;margin:14px 0 4px}
-.help-body p,.help-body li{font-size:.92rem;max-width:68ch}
+.help-top{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line)}
+.help-top h2{margin:0;font-size:1.08rem}
+.help-body{padding:4px 18px 20px;line-height:1.6}
+.help-body h3{font-size:.98rem;margin:20px 0 6px}
+.help-body h4{font-size:.9rem;margin:14px 0 4px}
+.help-body p,.help-body li{font-size:.88rem;max-width:68ch}
 .help-body p{margin:0 0 8px}
 .help-body ol,.help-body ul{margin:0 0 8px;padding-left:1.4em}
 .help-body li{margin-bottom:4px}
-.eq{display:block;margin:8px 0 10px;padding:8px 12px;background:var(--field);border:1px solid var(--line);border-radius:6px;font-size:.95rem;overflow-x:auto;white-space:nowrap}
+.eq{display:block;margin:8px 0 10px;padding:8px 12px;background:var(--field);border:1px solid var(--line);border-radius:6px;font-size:.92rem;overflow-x:auto;white-space:nowrap}
 .eq .n{float:right;color:var(--muted);margin-left:16px}
-.help-body table{border-collapse:collapse;font-size:.9rem;margin:4px 0 10px}
+.help-body table{border-collapse:collapse;font-size:.86rem;margin:4px 0 10px}
 .help-body td{padding:3px 12px 3px 0;vertical-align:top}
 .help-body td:first-child{white-space:nowrap;font-weight:600}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- ============ Input panel ============ -->
+  <!-- ============ Input panel ============
+       Top to bottom: title, plot title, data (fills the remaining height), base
+       temperature + Calculate + status, fit range, options, short help. -->
   <aside class="panel" aria-label="Inputs">
-    <div class="head">
-      <h1>Q<sub>10</sub> calculator</h1>
-      <button type="button" class="help-btn" id="btn-help" aria-haspopup="dialog">How it works</button>
-    </div>
-    <p class="sub">Fits period(T) = τ · Q<sub>10</sub><sup>(T<sub>base</sub> − T)/10</sup> to circadian period data.</p>
+    <h1 title="Fits period(T) = τ_b · Q10^((T_b − T)/10) to circadian period data">Q<sub>10</sub> calculator for circadian period</h1>
 
     <fieldset>
       <legend><label for="title">Plot title</label></legend>
@@ -305,11 +321,11 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
     </fieldset>
 
     <!-- Data box. The <input type=file> for CSV loading is hidden and opened from the button. -->
-    <fieldset>
+    <fieldset class="grow">
       <legend><label for="data">Data, one pair per line</label></legend>
-      <p class="hint">Temperature (°C) and period (h), separated by comma, space or tab. A header line and lines starting with # are skipped.</p>
-      <textarea id="data" autocomplete="off" spellcheck="false" aria-describedby="data-hint"></textarea>
-      <div class="row" style="margin-top:8px">
+      <p class="hint" title="A header line and lines starting with # are skipped.">Temperature (°C) and period (h); comma, space or tab separated.</p>
+      <textarea id="data" autocomplete="off" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:6px">
         <button type="button" id="btn-csv">Load CSV…</button>
         <button type="button" id="btn-example">Load example</button>
         <button type="button" id="btn-clear">Clear</button>
@@ -317,54 +333,48 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       </div>
     </fieldset>
 
-    <!-- Temperature range for the fit (Low/High are enabled only when the box is ticked). -->
+    <!-- Base temperature T_b (options from BASE_CHOICES), Calculate and the status line. -->
+    <fieldset>
+      <legend><label for="base">Base temperature</label></legend>
+      <div class="row nw">
+        <select id="base" autocomplete="off" style="flex:1;width:auto;min-width:0"></select>
+        <label for="custom">Custom</label><input id="custom" autocomplete="off" type="number" step="0.1" value="37" style="width:4.6em"><span>°C</span>
+      </div>
+      <div style="margin-top:8px"><button type="button" class="primary" id="btn-run">Calculate <kbd>Ctrl+Enter</kbd></button></div>
+      <div class="status" id="status" role="status" aria-live="polite">Ready.</div>
+    </fieldset>
+
+    <!-- Temperature range for the fit (Low/High enabled only when the box is ticked). -->
     <fieldset>
       <legend>Temperature range for the fit</legend>
       <label class="check"><input type="checkbox" id="use-range" autocomplete="off"> Use only data within a temperature range</label>
-      <div class="row" style="margin-top:8px">
-        <label for="low">Low</label><input id="low" autocomplete="off" type="number" step="0.1" value="25">
-        <label for="high">High</label><input id="high" autocomplete="off" type="number" step="0.1" value="40"><span>°C</span>
+      <div class="row nw" style="margin-top:5px">
+        <label for="low">Low</label><input id="low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.6em">
+        <label for="high">High</label><input id="high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.6em"><span>°C</span>
+        <button type="button" id="btn-all">Use all data</button>
       </div>
-    </fieldset>
-
-    <!-- Base temperature T_b. The options are generated from BASE_CHOICES in the script. -->
-    <fieldset>
-      <legend><label for="base">Base temperature</label></legend>
-      <select id="base" autocomplete="off"></select>
-      <div class="row" style="margin-top:8px">
-        <label for="custom">Custom value</label><input id="custom" autocomplete="off" type="number" step="0.1" value="37"><span>°C</span>
-      </div>
-    </fieldset>
-
-    <!-- Manual axis scales (only redraw; nothing is recalculated). Unticked = automatic. -->
-    <fieldset>
-      <legend>Axis scales</legend>
-      <p class="hint">Unticked axes are scaled automatically. The frequency and Arrhenius axes are converted from these ranges.</p>
-      <label class="check"><input type="checkbox" id="ax-t" autocomplete="off"> Set temperature axis</label>
-      <div class="row" style="margin-top:6px">
-        <label for="ax-tmin">Min</label><input id="ax-tmin" autocomplete="off" type="number" min="0" max="100" step="0.1">
-        <label for="ax-tmax">Max</label><input id="ax-tmax" autocomplete="off" type="number" min="0" max="100" step="0.1"><span>°C</span>
-      </div>
-      <label class="check" style="margin-top:10px"><input type="checkbox" id="ax-p" autocomplete="off"> Set period axis</label>
-      <div class="row" style="margin-top:6px">
-        <label for="ax-pmin">Min</label><input id="ax-pmin" autocomplete="off" type="number" min="0" max="180" step="0.1">
-        <label for="ax-pmax">Max</label><input id="ax-pmax" autocomplete="off" type="number" min="0" max="180" step="0.1"><span>h</span>
-      </div>
+      <p class="hint" style="margin-top:4px">Or drag across a plot; double-click a plot to use all data.</p>
     </fieldset>
 
     <fieldset>
       <!-- Arrhenius regression line on/off (only redraws; nothing is recalculated). -->
-      <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line on the Arrhenius plot</label>
-      <label class="check" style="margin-top:6px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
-      <div style="margin-top:12px"><button type="button" class="primary" id="btn-run">Calculate <kbd>Ctrl+Enter</kbd></button></div>
-      <div class="status" id="status" role="status" aria-live="polite">Ready.</div>
+      <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line</label>
+      <label class="check" style="margin-top:2px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
+    </fieldset>
+
+    <fieldset>
+      <details class="help">
+        <summary>How it works</summary>
+        <p>The model τ(T) = τ<sub>b</sub>·Q<sub>10</sub><sup>(T<sub>b</sub>−T)/10</sup> is fitted by non-linear least squares on the period itself (Levenberg–Marquardt), starting from a straight-line regression of ln(period) on temperature. Q<sub>10</sub> close to 1 means the clock is temperature-compensated.</p>
+        <p>The Arrhenius regression fits ln(frequency) against 1000/T (T in kelvin) and reports E<sub>a</sub> = −slope × 1000 × R.</p>
+        <p>All calculations run in your browser. The data you enter is not sent or stored.</p>
+        <button type="button" id="btn-help" aria-haspopup="dialog">Full explanation…</button>
+      </details>
     </fieldset>
   </aside>
 
   <!-- ============ Output area ============ -->
   <main class="out">
-    <!-- Start-up notice: demo data + privacy/offline statement. Hidden by Clear
-         (and also when the data box is edited or a CSV is loaded). -->
     <div class="demo" id="demo" role="note" hidden>
       <p>You’re looking at a demo calculation using example data. To analyse your own data, click <strong>Clear</strong> and enter your temperature and period pairs in the form.</p>
       <p class="privacy">All calculations run in your browser. The data you enter and the results are not sent anywhere and are not stored; they are gone when you close or reload the page, unless you save them yourself with the Save buttons. With an internet connection, the only thing the page fetches from outside is web fonts from Google. Once you have this HTML file on your computer, it works without an internet connection. You can download it from <a href="https://github.com/dxda6216/q10/blob/main/index.html" target="_blank" rel="noopener noreferrer">github.com/dxda6216/q10/blob/main/index.html</a> (use the “Download raw file” button on that page).</p>
@@ -374,23 +384,41 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <div><dt>Q<sub>10</sub></dt><dd id="o-q10">–</dd></div>
       <div><dt id="o-tau-label">τ at base temperature</dt><dd id="o-tau">–</dd></div>
       <div><dt>R²</dt><dd id="o-r2">–</dd></div>
+      <div><dt>E<sub>a</sub> (Arrhenius)</dt><dd id="o-ea">–</dd></div>
       <div><dt>Points in fit</dt><dd id="o-n">–</dd></div>
     </dl>
 
-    <!-- View tabs. Each data-tab value becomes "current" in render(). -->
-    <div class="tabs" role="tablist" aria-label="Output">
-      <button role="tab" aria-selected="true" data-tab="period">Period</button>
-      <button role="tab" aria-selected="false" data-tab="frequency">Frequency</button>
-      <button role="tab" aria-selected="false" data-tab="arrhenius">Arrhenius</button>
-      <button role="tab" aria-selected="false" data-tab="report">Report</button>
+    <!-- View tabs (each data-tab value becomes "current" in render()) and save buttons. -->
+    <div class="bar">
+      <div class="tabs" role="tablist" aria-label="Output">
+        <button role="tab" aria-selected="true" data-tab="period">Period</button>
+        <button role="tab" aria-selected="false" data-tab="frequency">Frequency</button>
+        <button role="tab" aria-selected="false" data-tab="arrhenius">Arrhenius</button>
+        <button role="tab" aria-selected="false" data-tab="report">Report</button>
+      </div>
+      <div class="saves" id="saves">
+        <button type="button" id="save-png" disabled>Save figure (PNG)</button>
+        <button type="button" id="save-svg" disabled>Save figure (SVG)</button>
+        <button type="button" id="save-txt" disabled>Save report (TXT)</button>
+      </div>
     </div>
 
     <section class="view" id="view" role="tabpanel"></section>
 
-    <div class="saves" id="saves">
-      <button type="button" id="save-png" disabled>Save figure (PNG)</button>
-      <button type="button" id="save-svg" disabled>Save figure (SVG)</button>
-      <button type="button" id="save-txt" disabled>Save report (TXT)</button>
+    <!-- Manual axis scales: one row below the plot (only redraw; nothing is recalculated). -->
+    <div class="axes" role="group" aria-label="Axis scales">
+      <span class="ttl" title="Tick an axis, enter Min and Max, then press Enter or leave the field. Untick to return to automatic scaling.">Axis scales</span>
+      <span class="grp">
+        <label class="check"><input type="checkbox" id="ax-t" autocomplete="off"> Temperature</label>
+        <label for="ax-tmin">Min</label><input id="ax-tmin" autocomplete="off" type="number" min="0" max="100" step="0.5">
+        <label for="ax-tmax">Max</label><input id="ax-tmax" autocomplete="off" type="number" min="0" max="100" step="0.5"><span>°C</span>
+      </span>
+      <span class="grp">
+        <label class="check"><input type="checkbox" id="ax-p" autocomplete="off"> Period</label>
+        <label for="ax-pmin">Min</label><input id="ax-pmin" autocomplete="off" type="number" min="0" max="180" step="0.5">
+        <label for="ax-pmax">Max</label><input id="ax-pmax" autocomplete="off" type="number" min="0" max="180" step="0.5"><span>h</span>
+        <span class="hint" title="Frequency and Arrhenius axes are converted from these ranges.">0–100 °C, 0–180 h, step 0.5</span>
+      </span>
     </div>
   </main>
 </div>
@@ -789,8 +817,12 @@ const PLOTS = {
 };
 // Colour sets. SCREEN refers to CSS variables so it follows the light/dark theme.
 // PRINT uses fixed colours for the saved figure, so the file looks right on its own.
-const SCREEN = { ink: "var(--ink)", axis: "var(--axis)", grid: "var(--grid)", used: "var(--used)", excl: "var(--excluded)", fit: "var(--fit)", arr: "var(--arr)", bg: "var(--panel)", line: "var(--line)", font: "var(--sans)" };
-const PRINT = { ink: "#18233A", axis: "#6B7486", grid: "#E6EAF0", used: "#C2410C", excl: "#8DBB90", fit: "#2F4FB5", arr: "#4B5563", bg: "#FFFFFF", line: "#D5DBE5", font: "Helvetica, Arial, sans-serif" };
+const SCREEN = { ink: "var(--ink)", axis: "var(--axis)", grid: "var(--grid)", used: "var(--used)", excl: "var(--excluded)", fit: "var(--fit)", arr: "var(--arr)", band: "var(--band)", bg: "var(--panel)", line: "var(--line)", font: "var(--sans)" };
+const PRINT = { ink: "#1B1F24", axis: "#6E7580", grid: "#E6E9ED", used: "#FF0000", excl: "#5DC85D", fit: "#2B8CD6", arr: "#6B7079", band: "#6F8BAE", bg: "#FFFFFF", line: "#D7DBE0", font: "Helvetica, Arial, sans-serif" };
+
+// Plot margins (SVG units) and the aspect ratio of the plot area: width 4 : height 3.
+const PLOT_M = { l: 76, r: 18, t: 38, b: 56 }, PLOT_ASPECT = 3 / 4;
+const heightFor = W => Math.round((W - PLOT_M.l - PLOT_M.r) * PLOT_ASPECT) + PLOT_M.t + PLOT_M.b;
 
 // Axis ticks: divide (hi - lo) into about "count" steps, round the step to a
 // "nice" value (1, 2, 5 or 10 x 10^k) and use its multiples. dec = decimals to show.
@@ -837,6 +869,7 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
    Manual limits are used exactly (no padding); anything outside is clipped.
    --------------------------------------------------------------------- */
 const AXIS_RANGE = { t: [0, 100], p: [0, 180] };  // allowed manual ranges (°C, h)
+const AXIS_STEP = 0.5;                                // step of the axis fields (°C, h)
 function autoLimits(kind, r, showArr) {
   const P = PLOTS[kind];
   const pts = r.x.map((t, i) => [P.tx(t), P.ty(r.y[i])]);
@@ -866,8 +899,8 @@ function applyAxes(kind, [x0, x1, y0, y1], axes) {
   return [x0, x1, y0, y1];
 }
 
-function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = false, showArr = false, axes = null) {
-  const P = PLOTS[kind], m = { l: 70, r: 18, t: 38, b: 56 };
+function plotSVG(kind, r, c, W = 600, H = heightFor(600), ox = 0, oy = 0, standalone = false, showArr = false, axes = null) {
+  const P = PLOTS[kind], m = PLOT_M;
   const pts = r.x.map((t, i) => [P.tx(t), P.ty(r.y[i])]);
   const used = r.xa.map((t, i) => [P.tx(t), P.ty(r.ya[i])]);
   const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
@@ -895,14 +928,16 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
   if (onScreen && r.useRange) {
     const a = sx(P.tx(r.low)), b = sx(P.tx(r.high));
     const L = Math.max(ox + m.l, Math.min(a, b)), R = Math.min(ox + m.l + pw, Math.max(a, b));
-    if (R > L) s += `<rect x="${L}" y="${oy + m.t}" width="${R - L}" height="${ph}" fill="${c.fit}" fill-opacity=".07"/>`;
+    if (R > L) s += `<rect x="${L}" y="${oy + m.t}" width="${R - L}" height="${ph}" fill="${c.band}" fill-opacity=".09"/>`;
   }
-  s += `<g clip-path="url(#${clipId})">`;  // data points (clipped when the axes are set manually)
+  // Lines first, points on top, so the fitted curves never cover the data points.
+  // Everything is clipped to the plot area (needed when the axes are set manually).
+  s += `<g clip-path="url(#${clipId})">`;
+  if (arrOn) s += `<polyline fill="none" stroke="${c.arr}" stroke-width="1.6" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  s += `<polyline fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   if (r.useRange) pts.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${c.excl}"/>`);
   used.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="${c.used}"/>`);
   s += `</g>`;
-  if (arrOn) s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.arr}" stroke-width="1.5" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
-  s += `<polyline clip-path="url(#${clipId})" fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   // legend in the emptiest corner
   // Legend: for each of the four corners, count the points that would fall inside
   // the legend box, and use the corner with the fewest (a simple version of
@@ -915,7 +950,7 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
   const corners = [[m.l + 8, m.t + 8], [m.l + pw - lw - 8, m.t + 8], [m.l + 8, m.t + ph - lh - 8], [m.l + pw - lw - 8, m.t + ph - lh - 8]];
   const hits = ([cx, cy]) => pts.concat(fit.filter((_, i) => i % 4 === 0), arrLine.filter((_, i) => i % 4 === 0)).filter(p => { const X = sx(p[0]) - ox, Y = sy(p[1]) - oy; return X > cx - 4 && X < cx + lw + 4 && Y > cy - 4 && Y < cy + lh + 4; }).length;
   const [lx, ly] = corners.reduce((b, k) => hits(k) < hits(b) ? k : b);
-  s += `<rect x="${ox + lx}" y="${oy + ly}" width="${lw}" height="${lh}" rx="5" fill="${c.bg}" fill-opacity=".9" stroke="${c.line}"/>`;
+  s += `<rect x="${ox + lx}" y="${oy + ly}" width="${lw}" height="${lh}" rx="5" fill="${c.bg}" fill-opacity=".92" stroke="${c.line}"/>`;
   items.forEach(([t, col, label], i) => {
     const Y = oy + ly + 17 + i * 20;
     s += t === "dot" ? `<circle cx="${ox + lx + 18}" cy="${Y - 4}" r="4.5" fill="${col}"/>`
@@ -924,7 +959,7 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
     s += `<text x="${ox + lx + 38}" y="${Y}" font-size="12" fill="${c.ink}">${esc(label)}</text>`;
   });
   if (onScreen) {
-    s += `<rect class="sel" x="0" y="${oy + m.t}" width="0" height="${ph}" fill="${c.fit}" fill-opacity=".18" stroke="${c.fit}" stroke-opacity=".6" visibility="hidden"/>`;
+    s += `<rect class="sel" x="0" y="${oy + m.t}" width="0" height="${ph}" fill="${c.band}" fill-opacity=".16" stroke="${c.band}" stroke-opacity=".7" visibility="hidden"/>`;
     s += `<rect class="hit" x="${ox + m.l}" y="${oy + m.t}" width="${pw}" height="${ph}" fill="transparent"`
        + ` data-x0="${x0}" data-x1="${x1}" data-kind="${kind}"/>`;
   }
@@ -936,7 +971,7 @@ function plotSVG(kind, r, c, W = 680, H = 460, ox = 0, oy = 0, standalone = fals
 // vertically in one SVG (same layout as "Save figure" in the Python version). White background.
 // showArr adds the Arrhenius regression line to the Arrhenius plot.
 function combinedSVG(r, title, showArr = false, axes = null) {
-  const W = 800, PH = 560, c = PRINT;
+  const W = 800, PH = heightFor(W), c = PRINT;
   let y = 20, head = "";
   if (title) { head += `<text x="${W / 2}" y="${y + 20}" text-anchor="middle" font-size="22" font-weight="600" fill="${c.ink}">${esc(title)}</text>`; y += 42; }
   summaryLines(r).forEach(l => { head += `<text x="${W / 2}" y="${y + 14}" text-anchor="middle" font-size="14" fill="${c.ink}">${esc(l)}</text>`; y += 20; });
@@ -964,13 +999,15 @@ BASE_CHOICES.forEach(([v, label]) => els.base.add(new Option(label, v, v === "37
 // result  : last successful analyze() result (null before calculating or after Clear)
 // current : the tab being shown
 let result = null, current = "period";
+els.btnAll = $("btn-all");
 
 // Enable/disable the Low, High and Custom inputs according to the checkbox and selection.
 function toggleStates() {
   els.low.disabled = els.high.disabled = !els.useRange.checked;
   els.custom.disabled = els.base.value !== "custom";
-  els.axTmin.disabled = els.axTmax.disabled = !els.axT.checked;
-  els.axPmin.disabled = els.axPmax.disabled = !els.axP.checked;
+  els.axT.disabled = els.axP.disabled = !result;
+  els.axTmin.disabled = els.axTmax.disabled = !(result && els.axT.checked);
+  els.axPmin.disabled = els.axPmax.disabled = !(result && els.axP.checked);
 }
 // Show a message in the status line; err=true shows it as an error (also announced to screen readers).
 function setStatus(msg, err = false) { els.status.textContent = msg; els.status.classList.toggle("error", err); els.status.setAttribute("role", err ? "alert" : "status"); }
@@ -987,12 +1024,15 @@ function render() {
   }
   if (current === "report") { els.view.innerHTML = `<pre class="report"></pre>`; els.view.firstChild.textContent = reportText(result, els.tab.checked); return; }
   const t = els.title.value.trim(), [l1, l2] = summaryLines(result);
-  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot">${plotSVG(current, result, SCREEN, ...plotSize(), 0, 0, true, els.showArr.checked, readAxes().axes)}</div>`
-    + `<div class="plot-hint"><span class="hint-text">Drag across the plot to fit only that temperature range. Double-click to use all data.</span>`
-    + `<button type="button" class="use-all"${result.useRange ? "" : " disabled"}>Use all data</button></div>`;
+  els.view.innerHTML = (t ? `<p class="figtitle"></p>` : "") + `<p class="figsum">${esc(l1)}<br>${esc(l2)}</p><div class="plot"></div>`
+    + `<p class="plothint hint-text">Drag across the plot to fit only that temperature range. Double-click to use all data.</p>`;
   if (t) els.view.querySelector(".figtitle").textContent = t;
-  els.view.querySelector(".use-all").addEventListener("click", useAllData);
-  attachRangeDrag(els.view.querySelector(".plot svg"));
+  // The plot is drawn after the layout is known: it fills the space left in the window,
+  // keeping its 4:3 plot area (the SVG is centred, never stretched).
+  const box = els.view.querySelector(".plot"), [W, H] = plotSize(box);
+  lastSize = box.clientWidth + "x" + box.clientHeight;
+  box.innerHTML = plotSVG(current, result, SCREEN, W, H, 0, 0, true, els.showArr.checked, readAxes().axes);
+  attachRangeDrag(box.querySelector("svg"));
 }
 
 /* ---------------- Drag-to-select temperature range on the plots ----------------
@@ -1068,9 +1108,15 @@ function useAllData() {
 
 // Plot size for the available width. On narrow screens a smaller coordinate system
 // is used so that text does not become too small when the SVG is scaled down.
-function plotSize() { const w = els.view.clientWidth; return w < 560 ? [440, 360] : [680, 460]; }
-let lastSize = 0;
-window.addEventListener("resize", () => { const s = plotSize()[0]; if (s !== lastSize) { lastSize = s; if (result && current !== "report") render(); } });
+function plotSize(box) { const w = (box && box.clientWidth) || els.view.clientWidth, W = w < 560 ? 440 : 600; return [W, heightFor(W)]; }
+let lastSize = "", resizeJob = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(resizeJob);
+  resizeJob = requestAnimationFrame(() => {
+    const box = els.view.querySelector(".plot");
+    if (result && current !== "report" && box && box.clientWidth + "x" + box.clientHeight !== lastSize) render();
+  });
+});
 
 // Update the Q10 / tau / R^2 / points-used readout and enable or disable the save buttons.
 function updateReadout() {
@@ -1079,6 +1125,7 @@ function updateReadout() {
   $("o-tau").innerHTML = r ? `${f3(r.popt[0])}<small>± ${f3(r.perr[0])} h</small>` : "–";
   $("o-tau-label").textContent = r ? `τ at ${r.base.toFixed(2)}${DEG}C` : "τ at base temperature";
   $("o-r2").textContent = r ? r.r2.toFixed(4) : "–";
+  $("o-ea").innerHTML = r ? `${(r.arr.Ea / 1000).toFixed(2)}<small>kJ/mol</small>` : "–";
   $("o-n").innerHTML = r ? `${r.xa.length}<small>of ${r.x.length}</small>` : "–";
   ["save-png", "save-svg", "save-txt"].forEach(id => $(id).disabled = !r);
 }
@@ -1099,7 +1146,7 @@ function run(keepTab = false) {
   const axErr = readAxes().error;
   if (axErr) setStatus(axErr, true);
   if (!keepTab && current === "report") current = "period";
-  updateReadout(); render();
+  toggleStates(); updateReadout(); render();
   return true;
 }
 
@@ -1110,7 +1157,7 @@ function hideDemo() { $("demo").hidden = true; }
 function clearAll() {
   hideDemo();
   els.data.value = ""; els.title.value = ""; result = null;
-  updateReadout(); render(); setStatus("Cleared.");
+  toggleStates(); updateReadout(); render(); setStatus("Cleared.");
 }
 
 // Read CSV/TSV/text: split each line on separators and keep only rows whose first two
@@ -1188,8 +1235,8 @@ function prefillAxis(key) {
   const [lo, hi] = AXIS_RANGE[key];
   const [minEl, maxEl, a, b] = key === "t" ? [els.axTmin, els.axTmax, x0, x1] : [els.axPmin, els.axPmax, y0, y1];
   if (minEl.value !== "" || maxEl.value !== "") return;
-  minEl.value = Math.max(lo, Math.floor(a * 10) / 10).toFixed(1);
-  maxEl.value = Math.min(hi, Math.ceil(b * 10) / 10).toFixed(1);
+  minEl.value = Math.max(lo, Math.floor(a / AXIS_STEP) * AXIS_STEP).toFixed(1);
+  maxEl.value = Math.min(hi, Math.ceil(b / AXIS_STEP) * AXIS_STEP).toFixed(1);
 }
 // Redraw after an axis setting changed, showing or clearing axis errors.
 function axesChanged() {
@@ -1199,6 +1246,7 @@ function axesChanged() {
   else if (result) setStatus(lastOkStatus);
   if (result) render();
 }
+els.btnAll.addEventListener("click", useAllData);
 els.axT.addEventListener("change", () => { if (els.axT.checked) prefillAxis("t"); axesChanged(); });
 els.axP.addEventListener("change", () => { if (els.axP.checked) prefillAxis("p"); axesChanged(); });
 [els.axTmin, els.axTmax, els.axPmin, els.axPmax].forEach(el => el.addEventListener("change", axesChanged));
@@ -1238,7 +1286,9 @@ els.useRange.addEventListener("change", () => rangeChanged(0));
   el.addEventListener("input", () => rangeChanged(RANGE_DELAY_MS));
   el.addEventListener("change", () => rangeChanged(0));
 });
-els.base.addEventListener("change", toggleStates);
+// Changing the base temperature (or the custom value) recalculates at once, after a first calculation.
+els.base.addEventListener("change", () => { toggleStates(); if (result) run(true); });
+els.custom.addEventListener("change", () => { if (result && els.base.value === "custom") run(true); });
 els.tab.addEventListener("change", () => { if (current === "report") render(); });
 // Toggling the Arrhenius regression line only redraws the current plot.
 els.showArr.addEventListener("change", () => { if (result && current === "arrhenius") render(); });
