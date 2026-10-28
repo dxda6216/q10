@@ -1579,10 +1579,12 @@ class Q10App(tk.Tk):
         self._set_text(self.txt_out, report_text(self.result, self.var_tab.get()))
 
     def _show_status(self):
-        """Show the status line (in red, under Calculate) only for problems."""
+        """Show the status line under Calculate only for problems (red) and for the live
+        range readout while dragging on a plot (grey); otherwise it takes no space."""
         msg = str(self.status.get())
-        if msg.startswith(("Cannot calculate", "Error", "Polynomial")) or " axis:" in msg:
-            self.status_label.configure(text=msg)
+        error = msg.startswith(("Cannot calculate", "Error", "Polynomial")) or " axis:" in msg
+        if error or msg.startswith("Selected:"):
+            self.status_label.configure(text=msg, foreground="#9A2A18" if error else "#5F6670")
             if not self.status_label.winfo_manager():  # not packed yet
                 self.status_label.pack(side=tk.BOTTOM, anchor="w", pady=(2, 4), before=self.btn_calc)
         else:
