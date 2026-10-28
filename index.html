@@ -284,11 +284,10 @@ pre.report{font:12px/1.5 var(--mono);margin:0;overflow:auto;max-height:70vh;whit
 .demo a,.help-body a{color:var(--accent);overflow-wrap:anywhere}
 .demo p.privacy{margin-top:4px;color:var(--muted);font-size:.76rem}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-/* Short "How it works" in the panel; the full explanation opens in a dialog. */
-details.help{font-size:.8rem;color:var(--muted)}
-details.help summary{cursor:pointer;color:var(--ink);font-weight:500}
-details.help p{margin:.5em 0}
-details.help button{margin-top:2px}
+/* Panel header: title and the "How it works" button (opens the help dialog). */
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.head h1{margin:0;padding-top:2px}
+.head button{flex:none}
 dialog.help{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);box-shadow:0 18px 50px rgba(10,20,40,.28)}
 dialog.help::backdrop{background:rgba(14,22,38,.45)}
 .help-top{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -313,7 +312,11 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
        Top to bottom: title, plot title, data (fills the remaining height), base
        temperature + Calculate + status, fit range, options, short help. -->
   <aside class="panel" aria-label="Inputs">
-    <h1 title="Fits period(T) = τ_b · Q10^((T_b − T)/10) to circadian period data">Q<sub>10</sub> calculator for circadian period</h1>
+    <!-- Header: title and the "How it works" button, which opens the help dialog. -->
+    <div class="head">
+      <h1 title="Fits period(T) = τ_b · Q10^((T_b − T)/10) to circadian period data">Q<sub>10</sub> calculator<br>for circadian period</h1>
+      <button type="button" id="btn-help" aria-haspopup="dialog">How it works</button>
+    </div>
 
     <fieldset>
       <legend><label for="title">Plot title</label></legend>
@@ -362,15 +365,6 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <label class="check" style="margin-top:2px"><input type="checkbox" id="tabdelim" autocomplete="off"> Also show tab-delimited data in the report</label>
     </fieldset>
 
-    <fieldset>
-      <details class="help">
-        <summary>How it works</summary>
-        <p>The model τ(T) = τ<sub>b</sub>·Q<sub>10</sub><sup>(T<sub>b</sub>−T)/10</sup> is fitted by non-linear least squares on the period itself (Levenberg–Marquardt), starting from a straight-line regression of ln(period) on temperature. Q<sub>10</sub> close to 1 means the clock is temperature-compensated.</p>
-        <p>The Arrhenius regression fits ln(frequency) against 1000/T (T in kelvin) and reports E<sub>a</sub> = −slope × 1000 × R.</p>
-        <p>All calculations run in your browser. The data you enter is not sent or stored.</p>
-        <button type="button" id="btn-help" aria-haspopup="dialog">Full explanation…</button>
-      </details>
-    </fieldset>
   </aside>
 
   <!-- ============ Output area ============ -->
