@@ -177,7 +177,7 @@
   color-scheme: light;
   --bg:#F1F2F4; --panel:#FFFFFF; --ink:#1B1F24; --muted:#5F6670; --line:#D7DBE0;
   --field:#F7F8FA; --accent:#0E6B66; --accent-ink:#FFFFFF;
-  --used:#FF0000; --excluded:#5DC85D; --fit:#2B8CD6; --arr:#6B7079; --grid:#E6E9ED; --axis:#6E7580;
+  --used:#FF0000; --excluded:#5DC85D; --fit:#2B8CD6; --arr:#6B7079; --poly:#8E44AD; --grid:#E6E9ED; --axis:#6E7580;
   --band:#6F8BAE; --err-bg:#FBE9E5; --err:#962818;
   --sans:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -189,7 +189,7 @@
     color-scheme: dark;
     --bg:#131416; --panel:#1C1E21; --ink:#E7E9EC; --muted:#9BA1A9; --line:#30343A;
     --field:#16181B; --accent:#5CC2B9; --accent-ink:#08201D;
-    --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --grid:#2A2E33; --axis:#8C929A;
+    --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --poly:#C39BD3; --grid:#2A2E33; --axis:#8C929A;
     --band:#8FA7C6; --err-bg:#3B1E19; --err:#FFB3A3;
   }
 }
@@ -197,7 +197,7 @@
   color-scheme: dark;
   --bg:#131416; --panel:#1C1E21; --ink:#E7E9EC; --muted:#9BA1A9; --line:#30343A;
   --field:#16181B; --accent:#5CC2B9; --accent-ink:#08201D;
-  --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --grid:#2A2E33; --axis:#8C929A;
+  --used:#FF0000; --excluded:#4CB85A; --fit:#6CB8F0; --arr:#A7ADB7; --poly:#C39BD3; --grid:#2A2E33; --axis:#8C929A;
   --band:#8FA7C6; --err-bg:#3B1E19; --err:#FFB3A3;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -209,8 +209,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
 @media (min-width:901px) and (min-height:640px){
   .app{height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
   .panel{overflow-y:auto;display:flex;flex-direction:column}
-  .panel .grow{flex:1;min-height:150px;display:flex;flex-direction:column}
-  .panel .grow textarea{flex:1;height:auto;min-height:90px;resize:none}
+  .panel .grow{flex:1;min-height:130px;display:flex;flex-direction:column}
+  .panel .grow textarea{flex:1;height:auto;min-height:70px;resize:none}
   .out{min-height:0}
   .view{flex:1;min-height:0;display:flex;flex-direction:column}
   .plot{flex:1;min-height:0}
@@ -359,6 +359,23 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <p class="hint" style="margin-top:4px">Or drag across a plot; double-click a plot to use all data.</p>
     </fieldset>
 
+    <!-- Optional polynomial fit of period vs. temperature (off by default). Changes only
+         recompute the polynomial and redraw; the Q10 fit is not affected. -->
+    <fieldset>
+      <legend>Polynomial fit (period vs. temperature)</legend>
+      <div class="row nw">
+        <label class="check"><input type="checkbox" id="poly-on" autocomplete="off"> Fit a polynomial</label>
+        <label for="poly-deg" style="margin-left:auto">Degree</label>
+        <select id="poly-deg" autocomplete="off" style="width:auto"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      </div>
+      <div class="row nw" style="margin-top:4px">
+        <label class="check" title="Unticked: all data points are used for the polynomial"><input type="checkbox" id="poly-range" autocomplete="off"> Range</label>
+        <label for="poly-low">Low</label><input id="poly-low" autocomplete="off" type="number" step="0.1" value="25" style="width:4.6em">
+        <label for="poly-high">High</label><input id="poly-high" autocomplete="off" type="number" step="0.1" value="40" style="width:4.6em"><span>°C</span>
+      </div>
+      <p class="hint" style="margin-top:3px">Drawn on the Period plot; equation, parameters and 200 calculated points are added to the report.</p>
+    </fieldset>
+
     <fieldset>
       <!-- Arrhenius regression line on/off (only redraws; nothing is recalculated). -->
       <label class="check"><input type="checkbox" id="show-arr" autocomplete="off" checked> Show Arrhenius regression line</label>
@@ -478,6 +495,7 @@ dialog.help::backdrop{background:rgba(14,22,38,.45)}
       <li>Enter one temperature (°C) and period (h) pair per line, separated by commas, spaces, tabs or semicolons. Or use <strong>Load CSV…</strong> with temperature in column 1 and period in column 2. A header line and lines starting with # are skipped.</li>
       <li>To fit only part of the data, tick <strong>Use only data within a temperature range</strong> and set Low and High (both ends included); after a first calculation the results update as soon as you change them. Or, after calculating, simply drag across any plot: the range you select is filled in and the fit is recalculated at once. The current range is shaded on the plots. Double-click a plot or click <strong>Use all data</strong> to go back to all data.</li>
       <li>Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data used in the fit.</li>
+      <li>Optionally, tick <strong>Fit a polynomial</strong> to fit a polynomial of period on temperature (degree 1–6), to all data or to its own temperature range. It is drawn on the Period plot as a purple line from the lowest to the highest temperature of its data, extended by 10 % of that span on each side, and the report gains its equation, the coefficients with standard errors, R², adjusted R², the residual standard error and 200 calculated points. It is fitted by ordinary least squares and does not affect the Q<sub>10</sub> fit.</li>
       <li>The axis scales are set automatically. To set them yourself, tick <strong>Set temperature axis</strong> and/or <strong>Set period axis</strong> under <strong>Axis scales</strong> and enter Min and Max (temperature 0–100 °C, period 0–180 h). The frequency and Arrhenius axes are converted from these ranges. The plots and saved figures update at once; untick to return to automatic scaling.</li>
       <li>Click <strong>Calculate</strong>, or press Ctrl+Enter (⌘+Enter on a Mac).</li>
       <li>Switch between the Period, Frequency, Arrhenius and Report tabs.</li>
@@ -741,6 +759,91 @@ function arrheniusFit(T, P) {
   };
 }
 
+/* ---------------------------------------------------------------------
+   polyFit: ordinary least-squares polynomial of period on temperature
+       Period(T) = a0 + a1*T + a2*T^2 + ... + ad*T^d
+   For numerical stability the fit is done in a scaled variable
+       u = (T - c) / h,  c = midpoint and h = half-width of the fitted temperatures,
+   by Householder QR of the design matrix U (columns u^0 ... u^d). With b the
+   coefficients in u and s^2 = SSE / (n - d - 1):
+       Cov(b) = s^2 (U^T U)^-1 = s^2 R^-1 R^-T
+   The coefficients in T follow exactly from the binomial expansion
+       a_j = sum_{k>=j} b_k h^-k C(k, j) (-c)^(k-j),   i.e. a = M b,
+   and Cov(a) = M Cov(b) M^T, so the reported SEs are those of a direct fit in T.
+   R^2 = 1 - SSE/SST; adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - d - 1).
+   The curve is evaluated (in u) at 200 evenly spaced temperatures from the lowest
+   fitted temperature minus 10 % of the fitted temperature span to the highest plus
+   10 % (like the Q10 curve, which extends its span by 33.3 % on each side).
+   --------------------------------------------------------------------- */
+const POLY_POINTS = 200;
+const POLY_MARGIN = 0.10;  // curve extends 10 % of the fitted temperature span on each side
+function polyFit(T, P, d) {
+  const n = T.length, m = d + 1;
+  if (n < d + 2) throw new Error(`Polynomial of degree ${d} needs at least ${d + 2} data points (${n} in its range).`);
+  const tmin = Math.min(...T), tmax = Math.max(...T);
+  if (!(tmax > tmin)) throw new Error("Polynomial fit needs at least two different temperatures.");
+  const c = (tmin + tmax) / 2, h = (tmax - tmin) / 2;
+  const U = T.map(t => { const u = (t - c) / h; return Array.from({ length: m }, (_, k) => u ** k); });
+  const y = P.slice();
+  // Householder QR: transform U (n x m) to R in place, applying the same reflections to y
+  const A = U.map(r => r.slice());
+  for (let k = 0; k < m; k++) {
+    let norm = 0; for (let i = k; i < n; i++) norm += A[i][k] ** 2; norm = Math.sqrt(norm);
+    if (norm === 0) throw new Error("Polynomial fit: the data do not determine all coefficients.");
+    const alpha = A[k][k] > 0 ? -norm : norm;
+    const v = Array(n).fill(0); v[k] = A[k][k] - alpha; for (let i = k + 1; i < n; i++) v[i] = A[i][k];
+    const vv = v.reduce((sum, x) => sum + x * x, 0);
+    if (vv === 0) continue;
+    for (let j = k; j < m; j++) { let dot = 0; for (let i = k; i < n; i++) dot += v[i] * A[i][j]; const f = 2 * dot / vv; for (let i = k; i < n; i++) A[i][j] -= f * v[i]; }
+    let dy = 0; for (let i = k; i < n; i++) dy += v[i] * y[i]; const fy = 2 * dy / vv; for (let i = k; i < n; i++) y[i] -= fy * v[i];
+  }
+  const R = A.slice(0, m).map(r => r.slice(0, m));
+  if (R.some((r, i) => Math.abs(r[i]) < 1e-12 * Math.abs(R[0][0]))) throw new Error("Polynomial fit: too few distinct temperatures for this degree.");
+  // back-substitution R b = (Q^T y)[0..m)
+  const b = Array(m).fill(0);
+  for (let i = m - 1; i >= 0; i--) { let sum = y[i]; for (let j = i + 1; j < m; j++) sum -= R[i][j] * b[j]; b[i] = sum / R[i][i]; }
+  // R^-1 (upper triangular) and Cov(b) = s^2 R^-1 R^-T
+  const Ri = Array.from({ length: m }, () => Array(m).fill(0));
+  for (let j = 0; j < m; j++) { Ri[j][j] = 1 / R[j][j]; for (let i = j - 1; i >= 0; i--) { let sum = 0; for (let k = i + 1; k <= j; k++) sum += R[i][k] * Ri[k][j]; Ri[i][j] = -sum / R[i][i]; } }
+  const evalU = u => b.reduce((acc, bk, k) => acc + bk * u ** k, 0);
+  const fitted = T.map(t => evalU((t - c) / h));
+  const sse = P.reduce((acc, p, i) => acc + (p - fitted[i]) ** 2, 0);
+  const pm = mean(P), sst = P.reduce((acc, p) => acc + (p - pm) ** 2, 0);
+  const dof = n - m, s2 = sse / dof;
+  const covB = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => { let sum = 0; for (let k = 0; k < m; k++) sum += Ri[i][k] * Ri[j][k]; return s2 * sum; }));
+  // a = M b with M[j][k] = h^-k C(k,j) (-c)^(k-j)
+  const C = (k, j) => { let r = 1; for (let i = 1; i <= j; i++) r = r * (k - j + i) / i; return r; };
+  const M = Array.from({ length: m }, (_, j) => Array.from({ length: m }, (_, k) => k < j ? 0 : C(k, j) * (-c) ** (k - j) / h ** k));
+  const a = M.map(row => row.reduce((acc, Mjk, k) => acc + Mjk * b[k], 0));
+  const covA = M.map(rj => M.map(ri => rj.reduce((acc, Mjk, k) => acc + Mjk * ri.reduce((a2, Mil, l) => a2 + Mil * covB[k][l], 0), 0)));
+  const se = covA.map((row, i) => Math.sqrt(Math.max(row[i], 0)));
+  const r2 = sst > 0 ? 1 - sse / sst : NaN;
+  const c0 = tmin - (tmax - tmin) * POLY_MARGIN, c1 = tmax + (tmax - tmin) * POLY_MARGIN;
+  const curveT = Array.from({ length: POLY_POINTS }, (_, i) => c0 + (c1 - c0) * i / (POLY_POINTS - 1));
+  return { degree: d, n, tmin, tmax, coef: a, se, r2, r2adj: 1 - (1 - r2) * (n - 1) / dof,
+           rse: Math.sqrt(s2), curveT, curveP: curveT.map(t => evalU((t - c) / h)) };
+}
+
+// Report lines for the polynomial fit: settings, equation, coefficients ± SE, goodness
+// of fit, and the 200 calculated points (tab-delimited, for pasting into a spreadsheet).
+function polyReport(pf) {
+  const g = v => (Math.abs(v) >= 1e-3 && Math.abs(v) < 1e5) || v === 0 ? v.toPrecision(7) : v.toExponential(6);
+  const pow = k => k === 0 ? "" : k === 1 ? "*T" : `*T^${k}`;
+  const eq = "Period = " + pf.coef.map((a, k) => (k === 0 ? g(a) : (a < 0 ? " - " : " + ") + g(Math.abs(a))) + pow(k)).join("");
+  return [
+    `POLYNOMIAL FIT (Period vs. Temperature, degree ${pf.degree})`,
+    `Data used: ${pf.n} points, ${f3(pf.tmin)}–${f3(pf.tmax)} ${DEG}C (T in ${DEG}C, Period in hours)`,
+    eq,
+    "Coefficients (\u00B1 SE):",
+    ...pf.coef.map((a, k) => `  a${k} (T^${k}) = ${g(a)} \u00B1 ${g(pf.se[k])}`),
+    `R\u00B2 = ${pf.r2.toFixed(6)}   adjusted R\u00B2 = ${pf.r2adj.toFixed(6)}   residual SE = ${pf.rse.toPrecision(4)} h`,
+    "",
+    `POLYNOMIAL FIT CURVE (${POLY_POINTS} points, ${f3(pf.curveT[0])}–${f3(pf.curveT[POLY_POINTS - 1])} ${DEG}C: data range \u00B1 ${POLY_MARGIN * 100} % of its span)`,
+    `Temp (${DEG}C)\tPeriod (hours)`,
+    ...pf.curveT.map((t, i) => `${f3(t)}\t${f3(pf.curveP[i])}`),
+  ];
+}
+
 /* =====================================================================
    Report (the Report tab and "Save report")
    Formatted exactly like the output of the Python version.
@@ -785,6 +888,7 @@ function reportText(r, tabbed) {
     `Slope d ln(f) / d(1000/T) = ${r.arr.slope.toFixed(4)} \u00B1 ${r.arr.seSlope.toFixed(4)} (10\u00B3 K)`,
     `Intercept = ${r.arr.intercept.toFixed(4)} \u00B1 ${r.arr.seInt.toFixed(4)}`,
     `R\u00B2 = ${r.arr.r2.toFixed(6)}`);
+  if (r.poly) out.push("", ...polyReport(r.poly));
   return out.join("\n");
 }
 // Two-line summary shown above the plots.
@@ -811,8 +915,8 @@ const PLOTS = {
 };
 // Colour sets. SCREEN refers to CSS variables so it follows the light/dark theme.
 // PRINT uses fixed colours for the saved figure, so the file looks right on its own.
-const SCREEN = { ink: "var(--ink)", axis: "var(--axis)", grid: "var(--grid)", used: "var(--used)", excl: "var(--excluded)", fit: "var(--fit)", arr: "var(--arr)", band: "var(--band)", bg: "var(--panel)", line: "var(--line)", font: "var(--sans)" };
-const PRINT = { ink: "#1B1F24", axis: "#6E7580", grid: "#E6E9ED", used: "#FF0000", excl: "#5DC85D", fit: "#2B8CD6", arr: "#6B7079", band: "#6F8BAE", bg: "#FFFFFF", line: "#D7DBE0", font: "Helvetica, Arial, sans-serif" };
+const SCREEN = { ink: "var(--ink)", axis: "var(--axis)", grid: "var(--grid)", used: "var(--used)", excl: "var(--excluded)", fit: "var(--fit)", arr: "var(--arr)", poly: "var(--poly)", band: "var(--band)", bg: "var(--panel)", line: "var(--line)", font: "var(--sans)" };
+const PRINT = { ink: "#1B1F24", axis: "#6E7580", grid: "#E6E9ED", used: "#FF0000", excl: "#5DC85D", fit: "#2B8CD6", arr: "#6B7079", poly: "#8E44AD", band: "#6F8BAE", bg: "#FFFFFF", line: "#D7DBE0", font: "Helvetica, Arial, sans-serif" };
 
 // Plot margins (SVG units) and the aspect ratio of the plot area: width 4 : height 3.
 const PLOT_M = { l: 76, r: 18, t: 38, b: 56 }, PLOT_ASPECT = 3 / 4;
@@ -870,7 +974,8 @@ function autoLimits(kind, r, showArr) {
   const refFit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.ref.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
   const refArr = showArr && kind === "arrhenius"
     ? r.fcx.map(t => [P.tx(t), r.ref.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
-  const all = [...pts, ...refFit, ...refArr];
+  const polyPts = kind === "period" && r.poly ? r.poly.curveT.map((t, i) => [t, r.poly.curveP[i]]) : [];
+  const all = [...pts, ...refFit, ...refArr, ...polyPts];
   let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0]));
   let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
   const px = (x1 - x0 || 1) * 0.05, py = (y1 - y0 || 1) * 0.05;
@@ -899,6 +1004,9 @@ function plotSVG(kind, r, c, W = 600, H = heightFor(600), ox = 0, oy = 0, standa
   const used = r.xa.map((t, i) => [P.tx(t), P.ty(r.ya[i])]);
   const fit = r.fcx.map((t, i) => [P.tx(t), P.ty(r.fcy[i])]).filter(p => isFinite(p[0]) && isFinite(p[1]));
   const arrOn = showArr && kind === "arrhenius";
+  // Optional polynomial fit (Period plot only): its data's temperature span plus 10 % on each side.
+  const polyOn = kind === "period" && !!r.poly;
+  const polyLine = polyOn ? r.poly.curveT.map((t, i) => [t, r.poly.curveP[i]]) : [];
   const arrLine = arrOn ? r.fcx.map(t => [P.tx(t), r.arr.lnf(t)]).filter(p => isFinite(p[0]) && isFinite(p[1])) : [];
   // Axis limits: automatic (fixed for any fit range, see autoLimits), or manual where set.
   // Points and curves outside the limits are clipped to the plot area.
@@ -927,6 +1035,7 @@ function plotSVG(kind, r, c, W = 600, H = heightFor(600), ox = 0, oy = 0, standa
   // Lines first, points on top, so the fitted curves never cover the data points.
   // Everything is clipped to the plot area (needed when the axes are set manually).
   s += `<g clip-path="url(#${clipId})">`;
+  if (polyOn) s += `<polyline fill="none" stroke="${c.poly}" stroke-width="1.8" points="${polyLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   if (arrOn) s += `<polyline fill="none" stroke="${c.arr}" stroke-width="1.6" points="${arrLine.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   s += `<polyline fill="none" stroke="${c.fit}" stroke-width="2" stroke-dasharray="7 5" points="${fit.map(p => sx(p[0]).toFixed(1) + "," + sy(p[1]).toFixed(1)).join(" ")}"/>`;
   if (r.useRange) pts.forEach(p => s += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${c.excl}"/>`);
@@ -940,9 +1049,10 @@ function plotSVG(kind, r, c, W = 600, H = heightFor(600), ox = 0, oy = 0, standa
     ? [["dot", c.excl, "Data"], ["dot", c.used, "Data used for Q₁₀ calculation"], ["line", c.fit, `Fit   Q₁₀ = ${f3(r.popt[1])}`]]
     : [["dot", c.used, "Data"], ["line", c.fit, `Fit   Q₁₀ = ${f3(r.popt[1])}`]];
   if (arrOn) items.push(["solid", c.arr, `Arrhenius regression   Ea = ${(r.arr.Ea / 1000).toFixed(2)} kJ/mol`]);
+  if (polyOn) items.push(["solid", c.poly, `Polynomial (degree ${r.poly.degree})   R² = ${r.poly.r2.toFixed(4)}`]);
   const lw = Math.max(...items.map(i => i[2].length)) * 6.6 + 44, lh = items.length * 20 + 10;
   const corners = [[m.l + 8, m.t + 8], [m.l + pw - lw - 8, m.t + 8], [m.l + 8, m.t + ph - lh - 8], [m.l + pw - lw - 8, m.t + ph - lh - 8]];
-  const hits = ([cx, cy]) => pts.concat(fit.filter((_, i) => i % 4 === 0), arrLine.filter((_, i) => i % 4 === 0)).filter(p => { const X = sx(p[0]) - ox, Y = sy(p[1]) - oy; return X > cx - 4 && X < cx + lw + 4 && Y > cy - 4 && Y < cy + lh + 4; }).length;
+  const hits = ([cx, cy]) => pts.concat(fit.filter((_, i) => i % 4 === 0), arrLine.filter((_, i) => i % 4 === 0), polyLine.filter((_, i) => i % 4 === 0)).filter(p => { const X = sx(p[0]) - ox, Y = sy(p[1]) - oy; return X > cx - 4 && X < cx + lw + 4 && Y > cy - 4 && Y < cy + lh + 4; }).length;
   const [lx, ly] = corners.reduce((b, k) => hits(k) < hits(b) ? k : b);
   s += `<rect x="${ox + lx}" y="${oy + ly}" width="${lw}" height="${lh}" rx="5" fill="${c.bg}" fill-opacity=".92" stroke="${c.line}"/>`;
   items.forEach(([t, col, label], i) => {
@@ -1139,6 +1249,8 @@ function run(keepTab = false) {
   setStatus(lastOkStatus);
   const axErr = readAxes().error;
   if (axErr) setStatus(axErr, true);
+  const polyErr = updatePoly();
+  if (polyErr) setStatus(polyErr, true);
   if (!keepTab && current === "report") current = "period";
   toggleStates(); updateReadout(); render();
   return true;
@@ -1196,6 +1308,50 @@ function svgToPNG(svg) {
     img.src = url;
   });
 }
+
+/* ---------------- Polynomial fit option ----------------
+   Off by default. When on, updatePoly() fits the chosen degree to all data points, or to
+   those within its own Low/High range (independent of the Q10 fit range), stores the
+   result in result.poly and returns an error message if it cannot be fitted (result.poly
+   is then null). Any change of the options refits and redraws at once (after a first
+   calculation); the Q10 fit is not affected. */
+els.polyOn = $("poly-on"); els.polyDeg = $("poly-deg"); els.polyRange = $("poly-range");
+els.polyLow = $("poly-low"); els.polyHigh = $("poly-high");
+function updatePoly() {
+  if (!result) return "";
+  result.poly = null;
+  if (!els.polyOn.checked) return "";
+  let T = result.x, P = result.y;
+  if (els.polyRange.checked) {
+    const lo = parseFloat(els.polyLow.value), hi = parseFloat(els.polyHigh.value);
+    if (!(lo < hi)) return "Polynomial fit: range Low must be smaller than High.";
+    const idx = T.map((_, i) => i).filter(i => T[i] >= lo && T[i] <= hi);
+    T = idx.map(i => result.x[i]); P = idx.map(i => result.y[i]);
+  }
+  try { result.poly = polyFit(T, P, parseInt(els.polyDeg.value, 10)); return ""; }
+  catch (e) { return e.message; }
+}
+function polyToggleStates() {
+  els.polyDeg.disabled = els.polyRange.disabled = !els.polyOn.checked;
+  els.polyLow.disabled = els.polyHigh.disabled = !(els.polyOn.checked && els.polyRange.checked);
+}
+let polyTimer = null;
+function polyChanged(delay) {
+  polyToggleStates();
+  clearTimeout(polyTimer);
+  if (!result) return;
+  polyTimer = setTimeout(() => {
+    const err = updatePoly();
+    if (err) setStatus(err, true); else setStatus(lastOkStatus);
+    render();
+  }, delay);
+}
+[els.polyOn, els.polyDeg, els.polyRange].forEach(el => el.addEventListener("change", () => polyChanged(0)));
+[els.polyLow, els.polyHigh].forEach(el => {
+  el.addEventListener("input", () => polyChanged(RANGE_DELAY_MS));
+  el.addEventListener("change", () => polyChanged(0));
+});
+polyToggleStates();
 
 /* ---------------- Manual axis scales ----------------
    Each axis is automatic unless its box is ticked. readAxes() validates the fields

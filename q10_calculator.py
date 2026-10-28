@@ -471,7 +471,91 @@ def report_text(r, show_tab_delimited=False):
         f"Intercept = {arr['intercept']:.4f} \u00B1 {arr['se_int']:.4f}",
         f"R\u00B2 = {arr['r2']:.6f}",
     ]
+    if r.get("poly"):
+        out += [""] + poly_report(r["poly"])
     return "\n".join(out)
+
+
+# ----------------------------------------------------------------------
+# Optional polynomial fit of period on temperature (off by default)
+# ----------------------------------------------------------------------
+POLY_POINTS = 200
+POLY_MARGIN = 0.10  # curve extends 10 % of the fitted temperature span on each side
+
+
+def poly_fit(temps, periods, degree):
+    """Ordinary least-squares polynomial  Period(T) = a0 + a1*T + ... + ad*T^d.
+
+    For numerical stability the fit is done in the scaled variable
+        u = (T - c) / h,  c = midpoint and h = half-width of the fitted temperatures,
+    by QR decomposition of the design matrix U (columns u^0 ... u^d). With b the
+    coefficients in u and s^2 = SSE / (n - d - 1):
+        Cov(b) = s^2 (U^T U)^-1 = s^2 R^-1 R^-T
+    The coefficients in T follow exactly from the binomial expansion
+        a_j = sum_{k>=j} b_k h^-k C(k, j) (-c)^(k-j),   i.e. a = M b,
+    and Cov(a) = M Cov(b) M^T, so the reported SEs are those of a direct fit in T
+    (fitting raw powers of T directly is badly conditioned for higher degrees).
+    R^2 = 1 - SSE/SST; adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - d - 1).
+    The curve is evaluated at 200 evenly spaced temperatures from the lowest fitted
+    temperature minus 10 % of the fitted span to the highest plus 10 % (like the Q10
+    curve, which extends its span by 33.3 % on each side).
+    """
+    T, P = np.asarray(temps, float), np.asarray(periods, float)
+    n, m = len(T), degree + 1
+    if n < degree + 2:
+        raise ValueError(f"Polynomial of degree {degree} needs at least {degree + 2} data points "
+                         f"({n} in its range).")
+    tmin, tmax = float(T.min()), float(T.max())
+    if not tmax > tmin:
+        raise ValueError("Polynomial fit needs at least two different temperatures.")
+    c, h = (tmin + tmax) / 2, (tmax - tmin) / 2
+    U = np.vander((T - c) / h, m, increasing=True)
+    Q, R = np.linalg.qr(U)
+    if np.any(np.abs(np.diag(R)) < 1e-12 * abs(R[0, 0])):
+        raise ValueError("Polynomial fit: too few distinct temperatures for this degree.")
+    b = np.linalg.solve(R, Q.T @ P)
+    fitted = U @ b
+    sse = float(np.sum((P - fitted) ** 2))
+    sst = float(np.sum((P - P.mean()) ** 2))
+    dof = n - m
+    s2 = sse / dof
+    Ri = np.linalg.inv(R)
+    cov_b = s2 * Ri @ Ri.T
+    M = np.array([[math.comb(k, j) * (-c) ** (k - j) / h ** k if k >= j else 0.0
+                   for k in range(m)] for j in range(m)])
+    a = M @ b
+    se = np.sqrt(np.clip(np.diag(M @ cov_b @ M.T), 0, None))
+    r2 = 1 - sse / sst if sst > 0 else float("nan")
+    c0, c1 = tmin - (tmax - tmin) * POLY_MARGIN, tmax + (tmax - tmin) * POLY_MARGIN
+    curve_t = np.linspace(c0, c1, POLY_POINTS)
+    curve_p = np.vander((curve_t - c) / h, m, increasing=True) @ b
+    return dict(degree=degree, n=n, tmin=tmin, tmax=tmax, coef=a, se=se, r2=r2,
+                r2adj=1 - (1 - r2) * (n - 1) / dof, rse=math.sqrt(s2),
+                curve_t=curve_t, curve_p=curve_p)
+
+
+def poly_report(pf):
+    """Report lines: settings, equation, coefficients ± SE, goodness of fit and the 200
+    calculated points (tab-delimited, for pasting into a spreadsheet)."""
+    def g(v):
+        return f"{v:.7g}" if v == 0 or 1e-3 <= abs(v) < 1e5 else f"{v:.6e}"
+    pw = lambda k: "" if k == 0 else ("*T" if k == 1 else f"*T^{k}")
+    eq = "Period = " + "".join(
+        (g(a) if k == 0 else (" - " if a < 0 else " + ") + g(abs(a))) + pw(k) for k, a in enumerate(pf["coef"]))
+    lines = [
+        f"POLYNOMIAL FIT (Period vs. Temperature, degree {pf['degree']})",
+        f"Data used: {pf['n']} points, {pf['tmin']:.3f}–{pf['tmax']:.3f} {DEG}C (T in {DEG}C, Period in hours)",
+        eq,
+        "Coefficients (\u00B1 SE):",
+        *[f"  a{k} (T^{k}) = {g(a)} \u00B1 {g(e)}" for k, (a, e) in enumerate(zip(pf["coef"], pf["se"]))],
+        f"R\u00B2 = {pf['r2']:.6f}   adjusted R\u00B2 = {pf['r2adj']:.6f}   residual SE = {pf['rse']:.4g} h",
+        "",
+        f"POLYNOMIAL FIT CURVE ({POLY_POINTS} points, {pf['curve_t'][0]:.3f}–{pf['curve_t'][-1]:.3f} {DEG}C: "
+        f"data range \u00B1 {POLY_MARGIN * 100:g} % of its span)",
+        f"Temp ({DEG}C)\tPeriod (hours)",
+        *[f"{t:.3f}\t{p:.3f}" for t, p in zip(pf["curve_t"], pf["curve_p"])],
+    ]
+    return lines
 
 
 # ======================================================================
@@ -486,6 +570,7 @@ def report_text(r, show_tab_delimited=False):
 # the data points (Z_POINT), so lines never cover points.
 C_USED, C_EXCL, C_FIT, C_ARR = "#FF0000", "#5DC85D", "#2B8CD6", "dimgray"
 C_BAND = "#6F8BAE"          # fit-range band and drag selection
+C_POLY = "#8E44AD"          # optional polynomial fit (Period plot)
 Z_LINE, Z_POINT = 2, 3
 PLOT_ASPECT = 3 / 4         # plot area height / width (width 4 : height 3)
 
@@ -526,7 +611,13 @@ def _fit_label(r):
 def draw_period(ax, r, show_arr=False):
     _scatter(ax, r, r["x"], r["y"], r["xa"], r["ya"])
     ax.plot(r["fcx"], r["fcy"], "--", color=C_FIT, zorder=Z_LINE, label=_fit_label(r))
-    _fix_limits(ax, [(r["x"], r["y"]), (r["fcx"], r["ref"]["fcy"])])
+    pairs = [(r["x"], r["y"]), (r["fcx"], r["ref"]["fcy"])]
+    pf = r.get("poly")
+    if pf:  # optional polynomial fit: its data's temperature span plus 10 % on each side
+        ax.plot(pf["curve_t"], pf["curve_p"], "-", color=C_POLY, lw=1.8, zorder=Z_LINE,
+                label=f"Polynomial (degree {pf['degree']})   R$^2$ = {pf['r2']:.4f}")
+        pairs.append((pf["curve_t"], pf["curve_p"]))
+    _fix_limits(ax, pairs)
     ax.set_xlabel(f"Temperature ({DEG}C)")
     ax.set_ylabel("Period (hours)")
     ax.set_title("Temperature vs. Period")
@@ -788,6 +879,12 @@ HELP_CONTENT = [
          "While the toolbar’s zoom or pan mode is on, dragging zooms or pans instead."],
         ["Choose the base temperature. Minimum, Maximum, Average and Median are taken from the data "
          "used in the fit."],
+        ["Optionally, tick ", ("b", "Fit a polynomial"), " to fit a polynomial of period on temperature "
+         "(degree 1–6), to all data or to its own temperature range. It is drawn on the Period plot as a "
+         "purple line from the lowest to the highest temperature of its data, extended by 10 % of that "
+         "span on each side, and Results gains its equation, the coefficients with standard errors, R², "
+         "adjusted R², the residual standard error and 200 calculated points. It is fitted by ordinary "
+         "least squares and does not affect the Q10 fit."],
         ["The axis scales are set automatically. To set them yourself, tick ", ("b", "Temperature"),
          " and/or ", ("b", "Period"), " under ", ("b", "Axis scales"), " and enter Min and Max "
          "(temperature 0–100 °C, period 0–180 h); press Enter or move to another field to apply. "
@@ -945,6 +1042,12 @@ class Q10App(tk.Tk):
         self.var_custom = tk.StringVar(value="37")
         self.var_tab = tk.BooleanVar(value=False)
         self.var_arr = tk.BooleanVar(value=True)   # show the Arrhenius regression line
+        # Optional polynomial fit (off by default)
+        self.var_poly = tk.BooleanVar(value=False)
+        self.var_poly_deg = tk.StringVar(value="2")
+        self.var_poly_range = tk.BooleanVar(value=False)
+        self.var_poly_low = tk.StringVar(value="25")
+        self.var_poly_high = tk.StringVar(value="40")
         # Manual axis scales (unticked = automatic)
         self.var_axt, self.var_axp = tk.BooleanVar(value=False), tk.BooleanVar(value=False)
         self.var_tmin, self.var_tmax = tk.StringVar(value=""), tk.StringVar(value="")
@@ -962,6 +1065,10 @@ class Q10App(tk.Tk):
         self._suppress_range = False
         for var in (self.var_low, self.var_high):
             var.trace_add("write", lambda *a: self._range_changed(self.RANGE_DELAY_MS))
+        # Polynomial fit options: Low/High edits are debounced like the fit range.
+        self._poly_job = None
+        for var in (self.var_poly_low, self.var_poly_high):
+            var.trace_add("write", lambda *a: self._poly_changed(self.RANGE_DELAY_MS))
         # Editing the plot title redraws the plots at once.
         self.var_title.trace_add("write", lambda *a: self._redraw_plots())
 
@@ -1004,6 +1111,37 @@ class Q10App(tk.Tk):
         # Arrhenius regression line on/off: only the Arrhenius plot is redrawn.
         ttk.Checkbutton(left, text="Show Arrhenius regression line", variable=self.var_arr,
                         command=self._redraw_arrhenius).pack(side=tk.BOTTOM, anchor="w")
+
+        # Optional polynomial fit of period vs. temperature (live update, see _poly_changed)
+        f = ttk.LabelFrame(left, text="Polynomial fit (period vs. temperature)", padding=(6, 2, 6, 4))
+        f.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 4))
+        row = ttk.Frame(f)
+        row.pack(fill=tk.X)
+        ttk.Checkbutton(row, text="Fit a polynomial", variable=self.var_poly,
+                        command=lambda: self._poly_changed(0)).pack(side=tk.LEFT)
+        self.cb_poly_deg = ttk.Combobox(row, textvariable=self.var_poly_deg, values=[str(d) for d in range(1, 7)],
+                                        state="readonly", width=3)
+        self.cb_poly_deg.pack(side=tk.RIGHT)
+        self.cb_poly_deg.bind("<<ComboboxSelected>>", lambda e: self._poly_changed(0))
+        ttk.Label(row, text="Degree").pack(side=tk.RIGHT, padx=(0, 4))
+        row = ttk.Frame(f)
+        row.pack(fill=tk.X, pady=(2, 0))
+        self.chk_poly_range = ttk.Checkbutton(row, text="Range", variable=self.var_poly_range,
+                                              command=lambda: self._poly_changed(0))
+        self.chk_poly_range.pack(side=tk.LEFT)
+        ttk.Label(row, text="Low").pack(side=tk.LEFT, padx=(4, 0))
+        self.sp_poly_low = ttk.Spinbox(row, from_=-50, to=150, increment=0.5, width=6, textvariable=self.var_poly_low)
+        self.sp_poly_low.pack(side=tk.LEFT, padx=3)
+        ttk.Label(row, text="High").pack(side=tk.LEFT)
+        self.sp_poly_high = ttk.Spinbox(row, from_=-50, to=150, increment=0.5, width=6, textvariable=self.var_poly_high)
+        self.sp_poly_high.pack(side=tk.LEFT, padx=3)
+        ttk.Label(row, text=f"{DEG}C").pack(side=tk.LEFT)
+        for sp in (self.sp_poly_low, self.sp_poly_high):
+            for ev in ("<Return>", "<FocusOut>"):
+                sp.bind(ev, lambda e: self._poly_changed(0))
+        ttk.Label(f, text="Drawn on the Period plot; equation, parameters and 200 calculated "
+                          "points are added to Results.", foreground=muted, wraplength=320,
+                  justify="left").pack(anchor="w", pady=(2, 0))
 
         # Temperature range for the fit (live update, see _range_changed)
         f = ttk.LabelFrame(left, text="Temperature range for the fit", padding=(6, 2, 6, 4))
@@ -1170,6 +1308,12 @@ class Q10App(tk.Tk):
         self.sp_low.configure(state=rng)
         self.sp_high.configure(state=rng)
         self.sp_custom.configure(state="normal" if self.var_base.get() == CUSTOM_BASE else "disabled")
+        if hasattr(self, "cb_poly_deg"):
+            on = self.var_poly.get()
+            self.cb_poly_deg.configure(state="readonly" if on else "disabled")
+            self.chk_poly_range.configure(state="normal" if on else "disabled")
+            for sp in (self.sp_poly_low, self.sp_poly_high):
+                sp.configure(state="normal" if on and self.var_poly_range.get() else "disabled")
         have = getattr(self, "result", None) is not None
         for key, on in (("t", self.var_axt), ("p", self.var_axp)):
             for sp in getattr(self, "ax_spins", {}).get(key, []):
@@ -1271,6 +1415,7 @@ class Q10App(tk.Tk):
             return False
 
         self.result = result
+        poly_err = self._update_poly()
         self.selectors = [None] * len(DRAWERS)
         for i in range(len(DRAWERS)):
             self._render_plot(i)
@@ -1286,6 +1431,8 @@ class Q10App(tk.Tk):
         err = self.read_axes()[1]
         if err:
             self.status.set(err)
+        if poly_err:
+            self.status.set(poly_err)
         if select_tab:
             self.nb.select(1)
         return True
@@ -1374,6 +1521,50 @@ class Q10App(tk.Tk):
         if self.result is None:
             return  # nothing calculated yet (or cleared): wait for Calculate
         self._range_job = self.after(delay, self._range_apply)
+
+    # ---- optional polynomial fit ---------------------------------------
+    # Off by default. _update_poly() fits the chosen degree to all data points, or to
+    # those within its own Low/High range (independent of the Q10 fit range), and stores
+    # it in result["poly"] (None if off or impossible; the reason is returned). Option
+    # changes refit and redraw at once after a first calculation (Low/High edits wait for
+    # typing to pause); the Q10 fit is not affected.
+    def _update_poly(self):
+        if self.result is None:
+            return ""
+        self.result["poly"] = None
+        if not self.var_poly.get():
+            return ""
+        T, P = self.result["x"], self.result["y"]
+        try:
+            if self.var_poly_range.get():
+                lo, hi = float(self.var_poly_low.get()), float(self.var_poly_high.get())
+                if not lo < hi:
+                    return "Polynomial fit: range Low must be smaller than High."
+                mask = (T >= lo) & (T <= hi)
+                T, P = T[mask], P[mask]
+            self.result["poly"] = poly_fit(T, P, int(self.var_poly_deg.get()))
+        except ValueError as exc:
+            return str(exc) if str(exc).startswith("Polynomial") else f"Polynomial fit: {exc}"
+        return ""
+
+    def _poly_changed(self, delay=0):
+        self._toggle_states()
+        if self._poly_job is not None:
+            self.after_cancel(self._poly_job)
+            self._poly_job = None
+        if self.result is None:
+            return
+        self._poly_job = self.after(delay, self._poly_apply)
+
+    def _poly_apply(self):
+        self._poly_job = None
+        if self.var_poly.get() and self.var_poly_range.get() and (
+                not str(self.var_poly_low.get()).strip() or not str(self.var_poly_high.get()).strip()):
+            return
+        err = self._update_poly()
+        self.status.set(err if err else self.last_ok)
+        self._render_plot(0)  # only the Period plot shows the polynomial
+        self._set_text(self.txt_out, report_text(self.result, self.var_tab.get()))
 
     def _rerun(self):
         """Recalculate after the base temperature changed (only once something was calculated)."""
