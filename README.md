@@ -125,7 +125,7 @@ The frequency, in cycles per day, is f(T) = 24 / τ(T). Taking logarithms gives 
 </picture>
 </p>
 
-The fitting yields an approximate solution for the coeficients τ<sub>b</sub> and Q<sub>10</sub>.
+By fitting the circadian periods obtained experimentally under various temperature conditions into Equation (1), approximate solutions for the coefficients  τ<sub>b</sub> and Q<sub>10</sub> can be obtained.
 
 ### The base temperature
 
