@@ -13,7 +13,7 @@ to your data and shows the result as Period, Frequency and Arrhenius plots. It a
 
 <p align="center">
 <picture>
-<img src="https://raw.githubusercontent.com/dxda6216/q10/refs/heads/main/images/q10_calculator_python_desktop_app_screenshot.png" alt="Q10 calculator desktop app screenshot" width="607">
+<img src="https://raw.githubusercontent.com/dxda6216/q10/refs/heads/main/images/q10_calculator_web_app_screenshot.png" alt="Q10 calculator web app screenshot" width="500">
 </picture>
 </p>
 
