@@ -125,6 +125,8 @@ The frequency, in cycles per day, is f(T) = 24 / τ(T). Taking logarithms gives 
 </picture>
 </p>
 
+The fitting yields an approximate solution for the coeficients τ<sub>b</sub> and Q<sub>10</sub>.
+
 ### The base temperature
 
 The base temperature only decides at which temperature the fitted period τ<sub>b</sub> is reported. Q<sub>10</sub>, its standard error, R² and the fitted curve are the same whatever base you choose; only τ<sub>b</sub> and its error change. A base far outside your data, such as absolute zero (−273.15 °C), makes τ<sub>b</sub> a long extrapolation with a large error.
