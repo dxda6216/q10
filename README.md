@@ -88,7 +88,7 @@ Replace **Temperatures** and **Periods** in the form with your values, then choo
 
 ### What Q<sub>10</sub> means
 
-Q<sub>10</sub> is the factor by which a rate changes for a 10 °C rise in temperature. From rates R<sub>1</sub> and R<sub>2</sub> measured at temperatures T<sub>1</sub> and T<sub>2</sub>:
+Q<sub>10</sub> is the factor by which a rate changes for a 10 °C rise in temperature \([see Van\'t Hoff\'s classical Q<sub>10</sub> table](https://dxda6216.github.io/q10/images/vant_hoff_q10.png)\). From rates R<sub>1</sub> and R<sub>2</sub> measured at temperatures T<sub>1</sub> and T<sub>2</sub>:
 
 <p align="center">
 <picture>
