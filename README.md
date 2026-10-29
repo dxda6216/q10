@@ -57,7 +57,7 @@ The easiest way is to use the web application (browser version) available at [`h
 
 Open [`https://github.com/dxda6216/q10/blob/main/index.html`](https://github.com/dxda6216/q10/blob/main/index.html), click **Download raw file** (You can save the downloaded HTML file anywhere on your computer and rename it as you like, but please keep the .html file extension). Open the saved file in your web browser. It opens with a demo calculation. Click **Clear**, enter your data, then click **Calculate**.
 
-Once the HTML file is downloaded into your computer, it can be opened in a web browser without an internet connection (offline), and the Q<sub>10</sub> calculations are performed within the web browser on your computer (without sending data to any remote server).
+Once the HTML file is downloaded into your computer, it can be opened in a web browser without an internet connection (offline), and the Q<sub>10</sub> calculations are performed within the web browser on your computer.
 
 ### Python version ###
 
