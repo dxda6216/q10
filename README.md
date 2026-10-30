@@ -97,7 +97,7 @@ Q<sub>10</sub> is the factor by which a rate changes for a 10 °C rise in temper
 </picture>
 </p>
 
-Typical enzyme-catalysed reactions have Q<sub>10</sub> of about 2 to 3. For a circadian clock, the “rate” is its frequency, 1/period. Circadian clocks are *temperature-compensated*: their period changes only a little with temperature, so Q<sub>10</sub> is usually close to 1 (roughly 0.8 to 1.2).
+Typical enzyme-catalysed reactions have Q<sub>10</sub> of about 2 to 3. For a circadian clock, the “rate” is its frequency, 1/period. Circadian clocks are *temperature-compensated*: their period changes only a little with temperature, so Q<sub>10</sub> is usually close to 1 (roughly 0.9 to 1.2).
 
 | Q<sub>10</sub> | Meaning |
 |---|---|
