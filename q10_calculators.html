@@ -41,22 +41,22 @@
     background: var(--bg);
     color: var(--ink);
     font-family: "Atkinson Hyperlegible", Arial, sans-serif;
-    font-size: 1.25rem;
-    line-height: 1.55;
+    font-size: 1.05rem;
+    line-height: 1.45;
   }
 
   main {
-    max-width: 46rem;
+    max-width: 50rem;
     margin: 0 auto;
-    padding: 4.5rem 1.5rem 5rem;
+    padding: 2.25rem 1.5rem 2rem;
   }
 
   /* Header: Q10 set large, with a cool-to-hot temperature scale beneath */
-  header { margin-bottom: 3rem; }
+  header { margin-bottom: 1.5rem; }
 
   h1 {
     margin: 0;
-    font-size: clamp(2.6rem, 7vw, 3.8rem);
+    font-size: clamp(2rem, 5vw, 2.7rem);
     line-height: 1.05;
     letter-spacing: -0.02em;
     font-weight: 700;
@@ -64,9 +64,9 @@
   h1 sub { font-size: 0.5em; vertical-align: -0.35em; }
 
   .scale {
-    height: 6px;
+    height: 5px;
     width: 100%;
-    margin: 1.25rem 0 1rem;
+    margin: 0.8rem 0 0.6rem;
     border-radius: 3px;
     background: linear-gradient(90deg, var(--cool), var(--warm) 65%, var(--hot));
   }
@@ -82,7 +82,7 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
 
   ul.calculators > li {
@@ -90,7 +90,7 @@
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 1.4rem 1.6rem 1.4rem 2rem;
+    padding: 0.85rem 1.25rem 0.9rem 1.6rem;
     overflow: hidden;
   }
   /* thermometer-like strip on the left edge */
@@ -98,13 +98,13 @@
     content: "";
     position: absolute;
     inset: 0 auto 0 0;
-    width: 6px;
+    width: 5px;
     background: linear-gradient(180deg, var(--hot), var(--warm) 40%, var(--cool));
   }
 
   .name {
-    margin: 0 0 0.35rem;
-    font-size: 1.5rem;
+    margin: 0 0 0.2rem;
+    font-size: 1.22rem;
     font-weight: 700;
     line-height: 1.3;
   }
@@ -128,21 +128,20 @@
   }
 
   .extra {
-    margin: 0.75rem 0 0;
-    font-size: 1.05rem;
+    margin: 0.35rem 0 0;
+    font-size: 0.95rem;
   }
 
   @media (max-width: 520px) {
-    body { font-size: 1.1rem; }
-    main { padding-top: 3rem; }
-    .name { font-size: 1.3rem; }
-    ul.calculators > li { padding: 1.2rem 1.2rem 1.2rem 1.6rem; }
+    body { font-size: 1rem; }
+    main { padding-top: 1.75rem; }
+    .name { font-size: 1.12rem; }
+    ul.calculators > li { padding: 0.8rem 1rem 0.85rem 1.35rem; }
   }
 </style>
 </head>
 <body>
 <main>
-
   <header>
     <h1>Q<sub>10</sub> calculators</h1>
     <div class="scale" aria-hidden="true"></div>
@@ -166,11 +165,10 @@
       <p class="extra"><a href="https://dxda6216.github.io/q10/Q10_Calculator_User_Manual.pdf">User manual (PDF)</a></p>
     </li>
     <li>
-      <h2 class="name"><a href="https://dxda6216.github.io/q10_calculator_by_condition/index.html">Circadian Q<sub>10</sub> calculator: multiple temperatures & conditions</a></h2>
+      <h2 class="name"><a href="https://dxda6216.github.io/q10_calculator_by_condition/index.html">Circadian Q<sub>10</sub> calculator: multiple temperatures &amp; conditions</a></h2>
       <p class="desc">For circadian periods measured at three or more temperatures under different conditions.</p>
     </li>
   </ul>
-
 </main>
 </body>
 </html>
