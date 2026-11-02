@@ -51,11 +51,11 @@ The same calculator comes in three versions. They use the same model, the same f
 
 **▶ Open the web app: https://dxda6216.github.io/q10/index.html**
 
-The easiest way is to use the web application (browser version) available at [`https://dxda6216.github.io/q10/index.html`](https://dxda6216.github.io/q10/index.html). Although this app is hosted on GitHub Pages, the Q<sub>10</sub> calculations are performed within your web browser (on your computer), and neither the data you enter nor the analysis results are ever sent or stored anywhere.
+The easiest way is to use the web application (browser version) available at [`https://dxda6216.github.io/q10/q10_calculators.html`](https://dxda6216.github.io/q10/q10_calculators.html). Although this app is hosted on GitHub Pages, the Q<sub>10</sub> calculations are performed within your web browser (on your computer), and neither the data you enter nor the analysis results are ever sent or stored anywhere.
 
 ### Browser version ### 
 
-Open [`https://github.com/dxda6216/q10/blob/main/index.html`](https://github.com/dxda6216/q10/blob/main/index.html), click **Download raw file** (You can save the downloaded HTML file anywhere on your computer and rename it as you like, but please keep the .html file extension). Open the saved file in your web browser. It opens with a demo calculation. Click **Clear**, enter your data, then click **Calculate**.
+Open [`https://github.com/dxda6216/q10/blob/main/index.htm`](https://github.com/dxda6216/q10/blob/main/index.html), click **Download raw file** (You can save the downloaded HTML file anywhere on your computer and rename it as you like, but please keep the .html file extension). Open the saved file in your web browser. It opens with a demo calculation. Click **Clear**, enter your data, then click **Calculate**.
 
 Once the HTML file is downloaded into your computer, it can be opened in a web browser without an internet connection (offline), and the Q<sub>10</sub> calculations are performed within the web browser on your computer.
 
