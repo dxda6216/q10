@@ -1,5 +1,9 @@
 # Q10 calculator for circadian period
 
+▶ https://dxda6216.github.io/q10/q10_calculators.html
+
+---
+
 A small tool that estimates the temperature coefficient **Q<sub>10</sub>** of a circadian clock from period measurements at several temperatures. It fits
 
 <p align="center">
